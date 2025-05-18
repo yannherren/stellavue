@@ -1,3 +1,5 @@
+mod stepper;
+
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::delay::{Ets, FreeRtos};
 use esp_idf_svc::hal::gpio::PinDriver;
@@ -13,6 +15,7 @@ use esp_idf_svc::wifi::{AccessPointConfiguration, AuthMethod, BlockingWifi, EspW
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+
 static INDEX_HTML: &str = include_str!("index.html");
 
 fn main() -> Result<(), EspError> {
@@ -20,6 +23,10 @@ fn main() -> Result<(), EspError> {
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
+
+
+    let stepper = stepper::Stepper::new();
+
 
     let peripherals = Peripherals::take()?;
     let sys_loop = EspSystemEventLoop::take()?;
