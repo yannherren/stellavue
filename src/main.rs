@@ -13,8 +13,8 @@ use esp_idf_svc::sys::{esp_wifi_set_max_tx_power, EspError};
 use esp_idf_svc::wifi;
 use esp_idf_svc::wifi::{AccessPointConfiguration, AuthMethod, BlockingWifi, EspWifi};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-
+use std::sync::{Arc, Mutex};
+use crate::stepper::StepperDirection;
 
 static INDEX_HTML: &str = include_str!("index.html");
 
@@ -24,18 +24,15 @@ fn main() -> Result<(), EspError> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
 
-
-    let stepper = stepper::Stepper::new();
-
-
     let peripherals = Peripherals::take()?;
     let sys_loop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
 
-    let stepper_running = Arc::new(AtomicBool::new(false));
+    let step = PinDriver::output(peripherals.pins.gpio3)?;
+    let dir = PinDriver::output(peripherals.pins.gpio4)?;
 
-    let mut step = PinDriver::output(peripherals.pins.gpio3)?;
-    let mut dir = PinDriver::output(peripherals.pins.gpio4)?;
+    let stepper = stepper::Stepper::new(dir, step);
+    let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
 
     let mut wifi = BlockingWifi::wrap(
         EspWifi::new(peripherals.modem, sys_loop.clone(), Some(nvs))?,
@@ -62,41 +59,17 @@ fn main() -> Result<(), EspError> {
 
     let mut server = create_web_server();
 
-    // log::info!("Hello, world!");
-
-    dir.set_high()?;
-
-    let timer_config = config::Config::new().auto_reload(true);
-    let mut timer = TimerDriver::new(peripherals.timer00, &timer_config)?;
-
     server.fn_handler("/", Method::Get, |req| {
         req.into_ok_response()?
             .write_all(INDEX_HTML.as_bytes())
             .map(|_| ())
     })?;
 
-    let stepper_running_clone = stepper_running.clone();
+    let stepper_clone = stepper.clone();
     server.fn_handler("/control", Method::Post, move |req| {
-        stepper_running_clone.store(true, Ordering::Relaxed);
+        stepper_clone.lock().unwrap().start_movement();
         req.into_ok_response()?.write_all("Running!".as_bytes()).map(|_| ())
     })?;
-
-    let stepper_running_clone = stepper_running.clone();
-    unsafe {
-        timer.subscribe(move || {
-            if stepper_running_clone.load(Ordering::Relaxed) {
-                step.set_high().unwrap();
-                Ets::delay_us(10);
-                step.set_low().unwrap();
-            }
-        })?;
-    }
-
-    timer.set_alarm(timer.tick_hz() / 3600)?;
-
-    timer.enable_interrupt()?;
-    timer.enable_alarm(true)?;
-    timer.enable(true)?;
 
     loop {
         FreeRtos::delay_ms(10);
