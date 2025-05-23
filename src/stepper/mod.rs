@@ -1,9 +1,9 @@
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::time::Duration;
 use esp_idf_svc::hal::delay::Ets;
 use esp_idf_svc::hal::gpio::{Output, OutputPin, PinDriver};
 use esp_idf_svc::timer::{EspTimer, EspTimerService};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use log::info;
 
 const ROD_PITCH_MM: f32 = 1.25;
 const STEPS_PER_ROTATION: u32 = 3600;
@@ -56,7 +56,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                 let steps_per_second = steps_per_second_clone.lock().unwrap();
                 if *steps_per_second == 0.0 { return }
 
-                *acc += 56.0 / 10_000.0;
+                *acc += *steps_per_second / 10_000.0;
 
                 if *acc >= 1.0 {
                     *acc -= 1.0;
@@ -85,10 +85,11 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
 
     //
-    pub fn start_movement(&self) {
+    pub fn move_constant(&self, direction: StepperDirection, speed: u16) {
         let mut steps_per_second_clone = self.steps_per_second.clone();
         let mut steps_per_second = steps_per_second_clone.lock().unwrap();
-        *steps_per_second = 12.0;
+        *steps_per_second = speed as f32;
+        info!("{}", *steps_per_second);
     }
     // pub fn start_tracking(&mut self) {
     //     self.tracking = true;
