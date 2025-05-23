@@ -4,17 +4,17 @@ use crate::stepper::StepperDirection::{DOWN, UP};
 
 pub struct CallbackHandler<M, T>
 where
-    M: FnOnce(StepperDirection, u16),
-    T: FnOnce(bool)
+    M: Fn(StepperDirection, u16),
+    T: Fn(bool)
 {
     pub move_constant: M,
     pub set_tracking: T
 }
 
-pub fn map_command<M, T>(handler: CallbackHandler<M, T>, command: u16)
+pub fn map_command<M, T>(handler: &CallbackHandler<M, T>, command: u16)
 where
-    M: FnOnce(StepperDirection, u16),
-    T: FnOnce(bool)
+    M: Fn(StepperDirection, u16),
+    T: Fn(bool)
 {
     let command_type = 0b11 & command;
     let payload = command >> 2;
