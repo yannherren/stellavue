@@ -1,20 +1,75 @@
 html, body {
+    --theme-dark: #2d3436;
+    --theme-dark-highlight: #bdc3c7;
+    --theme-dark-primary: #2980b9;
+
     margin: 0;
     padding: 0;
     width: 100vw;
     font-family: sans-serif;
+    background-color: var(--theme-dark);
 }
-header {
-    width: 100%;
-    padding: 16px;
-    box-sizing: border-box;
-    text-align: center;
-    background-color: #0000CC;
-    color: white;
+
+button {
+    padding: 16px 24px;
     font-size: 16px;
+    border: none;
+    background-color: var(--theme-dark-primary);
+    border-radius: 6px;
+    color: white;
     font-weight: bold;
 }
-section {
-    padding: 16px;
+
+header {
+    width: 100%;
+    padding: 4px 24px 24px 24px;
     box-sizing: border-box;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+}
+
+.header h1 {
+    font-size: 24px;
+    color: var(--theme-dark-highlight);
+}
+
+section {
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.compass {
+    margin: auto;
+    width: 50%;
+}
+
+.tracking {
+    margin: 48px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.controls {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+}
+
+.controls .percentage {
+    /*font-weight: bold;*/
+    font-size: 42px;
+}
+
+.controls .buttons {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.controls button {
+    font-size: 24px;
+    padding: 8px 16px;
 }
