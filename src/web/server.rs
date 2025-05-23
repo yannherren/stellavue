@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use crate::stepper::StepperDirection;
 use crate::web;
 use crate::web::protocol::CallbackHandler;
@@ -6,9 +5,11 @@ use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Write;
 use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
-use log::info;
 
-static INDEX_HTML: &str = include_str!("index.html");
+static INDEX_HTML: &str = include_str!("webapp/index.html");
+static INDEX_CSS: &str = include_str!("webapp/stylesheet.css");
+
+static INDEX_JS: &str = include_str!("webapp/index.js");
 
 const COMMAND_LEN: usize = 2;
 
@@ -32,23 +33,44 @@ impl WebServer {
             })
             .unwrap();
 
-        server.ws_handler("/ws/tracker", move |ws| {
-            if ws.is_new() || ws.is_closed() {
-                return Ok(());
-            }
+        // TODO: Improve, do not repeat!
+        server
+            .fn_handler("/stylesheet.css", Method::Get, |req| {
+                let headers = [("Content-Type", "text/css")];
+                req.into_response(200, Some("OK"), &headers)?
+                    .write_all(INDEX_CSS.as_bytes())
+                    .map(|_| ())
+            })
+            .unwrap();
 
-            let (_frame_type, len) = ws.recv(&mut []).unwrap();
-            if len != COMMAND_LEN {
-                return Err(EspError::from_infallible::<ESP_ERR_INVALID_SIZE>());
-            }
-            let mut buf = [0; COMMAND_LEN];
-            ws.recv(buf.as_mut())?;
+        server
+            .fn_handler("/index.js", Method::Get, |req| {
+                let headers = [("Content-Type", "text/javascript")];
+                req.into_response(200, Some("OK"), &headers)?
+                    .write_all(INDEX_JS.as_bytes())
+                    .map(|_| ())
+            })
+            .unwrap();
 
-            let command: u16 = ((buf[0] as u16) << 8) + buf[1] as u16;
-            web::protocol::map_command(&handler, command);
+        server
+            .ws_handler("/ws/tracker", move |ws| {
+                if ws.is_new() || ws.is_closed() {
+                    return Ok(());
+                }
 
-            return Ok::<(), EspError>(());
-        }).unwrap();
+                let (_frame_type, len) = ws.recv(&mut []).unwrap();
+                if len != COMMAND_LEN {
+                    return Err(EspError::from_infallible::<ESP_ERR_INVALID_SIZE>());
+                }
+                let mut buf = [0; COMMAND_LEN];
+                ws.recv(buf.as_mut())?;
+
+                let command: u16 = ((buf[0] as u16) << 8) + buf[1] as u16;
+                web::protocol::map_command(&handler, command);
+
+                return Ok::<(), EspError>(());
+            })
+            .unwrap();
 
         WebServer {
             http_server: server,
