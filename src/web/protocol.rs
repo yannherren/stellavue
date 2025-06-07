@@ -1,4 +1,3 @@
-use log::info;
 use crate::stepper::StepperDirection;
 use crate::stepper::StepperDirection::{DOWN, UP};
 
