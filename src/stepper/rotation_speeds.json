@@ -1,0 +1,47 @@
+[
+    {
+        "rotations": 4,
+        "offset_steps": 604,
+        "steps_per_second": 56
+    },
+    {
+        "rotations": 58,
+        "offset_steps": 1591,
+        "steps_per_second": 55
+    },
+    {
+        "rotations": 107,
+        "offset_steps": 3125,
+        "steps_per_second": 54
+    },
+    {
+        "rotations": 140,
+        "offset_steps": 1083,
+        "steps_per_second": 53
+    },
+    {
+        "rotations": 168,
+        "offset_steps": 319,
+        "steps_per_second": 52
+    },
+    {
+        "rotations": 191,
+        "offset_steps": 1279,
+        "steps_per_second": 51
+    },
+    {
+        "rotations": 210,
+        "offset_steps": 1338,
+        "steps_per_second": 50
+    },
+    {
+        "rotations": 225,
+        "offset_steps": 1108,
+        "steps_per_second": 49
+    },
+    {
+        "rotations": 240,
+        "offset_steps": 0,
+        "steps_per_second": 48
+    }
+]
