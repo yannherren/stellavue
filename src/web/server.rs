@@ -4,6 +4,7 @@ use crate::web::protocol::CallbackHandler;
 use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Write;
+use esp_idf_svc::mdns::EspMdns;
 use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
 
 static INDEX_HTML: &str = include_str!("webapp/index.html");
@@ -82,6 +83,16 @@ impl WebServer {
             stack_size: 10240,
             ..Default::default()
         };
+        let mut mdns = EspMdns::take().unwrap();
+        mdns.set_hostname("stellavue").unwrap();
+        mdns.add_service(
+            Some("CONTROL"),
+            "_http",
+            "_tcp",
+            server_configuration.http_port,
+            &[]
+        ).unwrap();
+        core::mem::forget(mdns);
 
         EspHttpServer::new(&server_configuration).unwrap()
     }
