@@ -1,12 +1,11 @@
 mod rotation_state;
 
+use crate::stepper::rotation_state::RotationState;
 use esp_idf_svc::hal::delay::Ets;
 use esp_idf_svc::hal::gpio::{Output, OutputPin, PinDriver};
 use esp_idf_svc::timer::{EspTimer, EspTimerService};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use log::info;
-use crate::stepper::rotation_state::RotationState;
 
 const ROD_PITCH_MM: f32 = 1.25;
 const STEPS_PER_ROTATION: u32 = 3600;

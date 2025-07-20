@@ -59,6 +59,7 @@ impl WebServer {
                     return Ok(());
                 }
 
+
                 let (_frame_type, len) = ws.recv(&mut []).unwrap();
                 if len != COMMAND_LEN {
                     return Err(EspError::from_infallible::<ESP_ERR_INVALID_SIZE>());
