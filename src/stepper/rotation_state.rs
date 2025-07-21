@@ -37,22 +37,24 @@ impl RotationState {
         }
     }
 
-    pub fn increment_step(&mut self) {
+    pub fn increment_step(&mut self) -> (u16, u16) {
         if self.rotation_offset >= STEPS_PER_ROTATION {
             self.rotation_offset = 0;
             self.rotations += 1;
         } else {
             self.rotation_offset += 1;
         }
+        (self.rotations, self.rotation_offset)
     }
 
-    pub fn decrement_step(&mut self) {
+    pub fn decrement_step(&mut self) -> (u16, u16) {
         if self.rotation_offset <= 0 {
             self.rotation_offset = STEPS_PER_ROTATION - 1;
             self.rotations -= 1;
         } else {
             self.rotation_offset -= 1;
         }
+        (self.rotations, self.rotation_offset)
     }
 
     pub fn update_speed(&mut self) {
@@ -81,5 +83,9 @@ impl RotationState {
 
     pub fn set_speed(&mut self, steps_per_second: u16) {
         self.steps_per_second = steps_per_second;
+    }
+
+    pub fn get_rotation(&self) -> (u16, u16) {
+        (self.rotations, self.rotation_offset)
     }
 }

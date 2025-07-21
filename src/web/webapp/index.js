@@ -1,5 +1,6 @@
 const socket = new WebSocket("/ws/tracker");
 
+const logEl = document.querySelector('div[data-field="log"]');
 const slider = document.querySelector(".slider");
 const trackingButton = document.querySelector(".track-button");
 const upButton = document.querySelector(".up-button");
@@ -25,6 +26,11 @@ socket.addEventListener("open", (event) => {
     }
 });
 
+socket.addEventListener('message', function (msg) {
+    const el = document.createElement('div');
+    el.innerHTML = msg.data.toString();
+    logEl.appendChild(el);
+});
 
 function send_command(command) {
     const buffer = new ArrayBuffer(2);

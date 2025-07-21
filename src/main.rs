@@ -5,7 +5,7 @@ mod camera;
 
 use std::cell::RefCell;
 use crate::web::protocol::CallbackHandler;
-use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::eventloop::{EspEventLoop, EspSystemEventLoop};
 use esp_idf_svc::hal::delay::{Delay, Ets, FreeRtos};
 use esp_idf_svc::hal::gpio::{Pin, PinDriver};
 use esp_idf_svc::hal::peripherals::Peripherals;
@@ -56,7 +56,7 @@ fn main() -> Result<(), EspError> {
     let dir = PinDriver::output(peripherals.pins.gpio4)?;
     let mut shutter = PinDriver::output(peripherals.pins.gpio5)?;
 
-    let stepper = stepper::Stepper::new(dir, step);
+    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone());
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
 
     let stepper_clone = stepper.clone();
@@ -70,10 +70,10 @@ fn main() -> Result<(), EspError> {
         set_tracking: move |enable| (),
     };
 
-    let mut wifi = wifi::WifiConnection::new(peripherals.modem, sys_loop, Some(nvs));
+    let mut wifi = wifi::WifiConnection::new(peripherals.modem, sys_loop.clone(), Some(nvs));
     wifi.connect()?;
 
-    let _server = web::server::WebServer::new(server_handler);
+    let _server = web::server::WebServer::new(server_handler, sys_loop.clone());
     loop {
         FreeRtos::delay_ms(10000);
         shutter.set_high()?;
