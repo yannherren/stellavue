@@ -7,6 +7,8 @@ const ROTATION_CONFIG: &str = include_str!("rotation_speeds.json");
 
 const STEPS_PER_ROTATION: u16 = 200 * 16; // 16x microstepping
 
+const MAX_ROTATIONS: u16 = 70;
+
 #[derive(Serialize, Deserialize, Debug)]
 struct RotationConfigData {
     rotations: u16,
@@ -87,5 +89,13 @@ impl RotationState {
 
     pub fn get_rotation(&self) -> (u16, u16) {
         (self.rotations, self.rotation_offset)
+    }
+
+    pub fn is_step_allowed(&self) -> bool {
+        self.rotations < MAX_ROTATIONS
+    }
+
+    pub fn get_fulfill_percentage(&self) -> f32 {
+        self.rotations as f32 / MAX_ROTATIONS as f32
     }
 }

@@ -45,7 +45,7 @@ fn main() -> Result<(), EspError> {
     // let bus: &'static _ = shared_bus::new_std!(I2cDriver = i2c).unwrap();
     // let bus = shared_bus::BusManagerSimple::new();
 
-    // let mut camera_module = CameraModule::new(RefCellDevice::new(&i2c_ref_cell), shutter_pin).unwrap();
+    // let mut camera_module = CameraModule::new(RefCellDevice::new(&i2c_ref_cell), peripherals.pins.gpio5).unwrap();
 
 
     // let mut mpu6050 = Mpu6050::new(RefCellDevice::new(&i2c_ref_cell), Address::default()).unwrap();

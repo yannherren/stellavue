@@ -81,12 +81,10 @@ impl WebServer {
                     }
 
                     let mut detached_sender = ws.create_detached_sender().unwrap();
-
                     let subscription = sys_loop_clone.subscribe::<StepperEvent, _>(move |event| {
-                        info!("[Subscribe callback] Got event: {event:?}");
                         detached_sender
                             .send(
-                                FrameType::Text(false),
+                                FrameType::Binary(false),
                                 "Please enter a number between 1 and 100".as_bytes(),
                             )
                             .unwrap();
@@ -114,6 +112,10 @@ impl WebServer {
             http_server: server,
             sys_loop,
         }
+    }
+
+    fn map_event_to_response(event: StepperEvent) {
+
     }
 
     fn create_web_server() -> EspHttpServer<'static> {
