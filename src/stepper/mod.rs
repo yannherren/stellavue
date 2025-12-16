@@ -27,7 +27,7 @@ pub struct Stepper<STATE, D, S> where D: OutputPin, S: OutputPin {
     step_pin: Arc<Mutex<PinDriver<'static, S, Output>>>,
     rotation_state: Arc<Mutex<RotationState>>,
     direction: Arc<Mutex<StepperDirection>>,
-    timer: Option<EspTimer<'static>>,
+    timer: Arc<Mutex<Option<EspTimer<'static>>>>,
     sys_loop: EspEventLoop<System>
 }
 
@@ -45,7 +45,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             step_pin: Arc::new(Mutex::new(step)),
             rotation_state: Arc::new(Mutex::new(RotationState::new())),
             direction: Arc::new(Mutex::new(StepperDirection::UP)),
-            timer: None,
+            timer: Arc::new(Mutex::new(None)),
             sys_loop
         }
     }
@@ -60,9 +60,11 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             let mut rotation_state_clone = self.rotation_state.clone();
             let mut step_pin_clone = self.step_pin.clone();
             let mut acc_clone = acc.clone();
+            let mut timer_clone = self.timer.clone();
             let sys_loop_clone = self.sys_loop.clone();
 
             timer_service.timer(move || Self::timer_tick(
+                &mut timer_clone,
                 &current_direction,
                 &tracking_active,
                 &mut step_pin_clone,
@@ -81,6 +83,8 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         // test_timer.every(Duration::from_secs(2)).unwrap();
         // core::mem::forget(test_timer);
 
+        let mut timer = self.timer.lock().unwrap();
+        *timer = Some(callback_timer);
 
         Stepper {
             state: On,
@@ -89,12 +93,13 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             step_pin: self.step_pin.clone(),
             direction: self.direction.clone(),
             rotation_state: self.rotation_state.clone(),
-            timer: Some(callback_timer),
+            timer: self.timer.clone(),
             sys_loop: self.sys_loop.clone()
         }
     }
 
     fn timer_tick(
+        timer: &mut Arc<Mutex<Option<EspTimer>>>,
         direction: &Arc<Mutex<StepperDirection>>,
         tracking_active: &Arc<Mutex<bool>>,
         step_pin: &mut Arc<Mutex<PinDriver<'static, S, Output>>>,
@@ -121,16 +126,23 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 
             let direction = direction.lock().unwrap();
 
-            if rotation_state.max_reached() || rotation_state.min_reached() {
-
-            }
-
             let (modified_rotations, modified_offset) =
                 if *direction == StepperDirection::UP {
                     rotation_state.increment_step()
                 } else {
                     rotation_state.decrement_step()
                 };
+
+            if rotation_state.max_reached() || rotation_state.min_reached() {
+                let timer = timer.lock().unwrap();
+                let mut tracking_active = tracking_active.lock().unwrap();
+                if let Some(ref timer) = *timer {
+                    sys_loop.post::<StepperEvent>(&StepperEvent::MovementStop, delay::BLOCK).unwrap();
+                    (*timer).cancel().unwrap();
+                    *tracking_active = false;
+                    return;
+                }
+            }
 
             if rotations != modified_rotations {
                 sys_loop.post::<StepperEvent>(&StepperEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
@@ -192,19 +204,22 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
     }
 
     fn start_timer(&mut self) {
-        if let Some(timer) = &self.timer {
+        let timer = self.timer.lock().unwrap();
+        if let Some(ref timer) = *timer {
             timer.every(Duration::from_micros(100)).unwrap();
         }
     }
 
     fn stop_timer(&mut self) {
-        if let Some(timer) = &self.timer {
+        let timer = self.timer.lock().unwrap();
+        if let Some(ref timer) = *timer {
             timer.cancel().unwrap();
         }
     }
 
     fn timer_active(&mut self) -> bool {
-        if let Some(timer) = &self.timer {
+        let timer = self.timer.lock().unwrap();
+        if let Some(ref timer) = *timer {
             return timer.is_scheduled().unwrap();
         }
         false
