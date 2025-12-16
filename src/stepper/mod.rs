@@ -14,6 +14,7 @@ pub use crate::stepper::stepper_event::StepperEvent;
 const ROD_PITCH_MM: f32 = 1.25;
 const STEPS_PER_ROTATION: u32 = 3600;
 
+#[derive(PartialEq)]
 pub enum StepperDirection {
     UP,
     DOWN,
@@ -55,21 +56,20 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 
         let callback_timer = {
             let tracking_active = self.tracking.clone();
+            let current_direction = self.direction.clone();
             let mut rotation_state_clone = self.rotation_state.clone();
             let mut step_pin_clone = self.step_pin.clone();
             let mut acc_clone = acc.clone();
             let sys_loop_clone = self.sys_loop.clone();
 
-
-
             timer_service.timer(move || Self::timer_tick(
+                &current_direction,
                 &tracking_active,
                 &mut step_pin_clone,
                 &mut rotation_state_clone,
                 &mut acc_clone,
                 &sys_loop_clone
-            )
-            ).unwrap()
+            )).unwrap()
         };
 
         // let sys_loop_clone = self.sys_loop.clone();
@@ -95,6 +95,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
     }
 
     fn timer_tick(
+        direction: &Arc<Mutex<StepperDirection>>,
         tracking_active: &Arc<Mutex<bool>>,
         step_pin: &mut Arc<Mutex<PinDriver<'static, S, Output>>>,
         rotation_state: &mut Arc<Mutex<RotationState>>,
@@ -117,7 +118,20 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             step.set_low().unwrap();
 
             let (rotations, _offset) = rotation_state.get_rotation();
-            let (modified_rotations, modified_offset) = rotation_state.increment_step();
+
+            let direction = direction.lock().unwrap();
+
+            if rotation_state.max_reached() || rotation_state.min_reached() {
+
+            }
+
+            let (modified_rotations, modified_offset) =
+                if *direction == StepperDirection::UP {
+                    rotation_state.increment_step()
+                } else {
+                    rotation_state.decrement_step()
+                };
+
             if rotations != modified_rotations {
                 sys_loop.post::<StepperEvent>(&StepperEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
             }
@@ -136,6 +150,7 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
     pub fn move_constant(&mut self, direction: StepperDirection, speed: u16) {
         self.sys_loop.post::<StepperEvent>(&StepperEvent::MovementStartUp, delay::BLOCK).unwrap();
         self.stop_movement();
+        self.set_direction(direction);
         {
             let mut rotation_state = self.rotation_state.lock().unwrap();
             rotation_state.set_speed(speed);
@@ -162,6 +177,17 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
                 *tracking_active = false;
             }
             self.stop_timer();
+        }
+    }
+
+    fn set_direction(&mut self, new_direction: StepperDirection) {
+        let mut direction = self.direction.lock().unwrap();
+        let mut direction_pin = self.dir_pin.lock().unwrap();
+        *direction = new_direction;
+        if *direction == StepperDirection::UP {
+            (*direction_pin).set_high().unwrap();
+        } else {
+            (*direction_pin).set_low().unwrap();
         }
     }
 

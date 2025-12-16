@@ -40,6 +40,9 @@ impl RotationState {
     }
 
     pub fn increment_step(&mut self) -> (u16, u16) {
+        if self.max_reached() {
+            return (self.rotations, self.rotation_offset);
+        }
         if self.rotation_offset >= STEPS_PER_ROTATION {
             self.rotation_offset = 0;
             self.rotations += 1;
@@ -50,6 +53,10 @@ impl RotationState {
     }
 
     pub fn decrement_step(&mut self) -> (u16, u16) {
+        if self.min_reached() {
+            return (self.rotations, self.rotation_offset);
+        }
+
         if self.rotation_offset <= 0 {
             self.rotation_offset = STEPS_PER_ROTATION - 1;
             self.rotations -= 1;
@@ -91,8 +98,12 @@ impl RotationState {
         (self.rotations, self.rotation_offset)
     }
 
-    pub fn is_step_allowed(&self) -> bool {
-        self.rotations < MAX_ROTATIONS
+    pub fn max_reached(&self) -> bool {
+        self.rotations == MAX_ROTATIONS
+    }
+
+    pub fn min_reached(&self) -> bool {
+        self.rotation_offset == 0 && self.rotations == 0
     }
 
     pub fn get_fulfill_percentage(&self) -> f32 {

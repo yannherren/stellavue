@@ -1,3 +1,4 @@
+use log::info;
 use crate::stepper::StepperDirection;
 use crate::stepper::StepperDirection::{DOWN, UP};
 
@@ -28,6 +29,7 @@ where
     match command_type {
         0b01 => {
             let direction = 0x1 & payload;
+            info!("{:?}", direction);
             let direction = if direction == 1 { UP } else { DOWN };
             let speed = payload >> 1;
             (handler.move_constant)(direction, speed);
