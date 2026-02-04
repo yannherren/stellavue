@@ -66,7 +66,7 @@ impl RotationState {
         (self.rotations, self.rotation_offset)
     }
 
-    pub fn update_speed(&mut self) {
+    pub fn update_speed_from_config(&mut self) {
         if self.next_speed_rotation_offset == 0 && self.next_speed_rotations == 0 {
             self.steps_per_second = self.speed_config[0].steps_per_second;
             self.next_speed_rotations = self.speed_config[1].rotations;

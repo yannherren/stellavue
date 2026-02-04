@@ -151,7 +151,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                 // Only post steps when tracking since the tracking speed is slow
                 // Otherwise too many events are fired
                 sys_loop.post::<StepperEvent>(&StepperEvent::StepComplete(modified_rotations, modified_offset), delay::BLOCK).unwrap();
-                rotation_state.update_speed();
+                rotation_state.update_speed_from_config();
             }
         }
     }
@@ -177,7 +177,7 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
             let mut tracking_active = self.tracking.lock().unwrap();
             *tracking_active = true;
         }
-        self.rotation_state.lock().unwrap().update_speed();
+        self.rotation_state.lock().unwrap().update_speed_from_config();
         self.start_timer();
     }
 
