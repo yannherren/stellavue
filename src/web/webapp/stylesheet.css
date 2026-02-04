@@ -29,21 +29,32 @@ button {
 
 header {
     width: 100%;
-    padding: 4px 24px 24px 24px;
+    padding: 24px 24px 24px 24px;
     box-sizing: border-box;
     font-weight: bold;
     display: flex;
     justify-content: space-between;
+    background-color: var(--theme-dark-accent);
 }
 
-.header h1 {
+header h1 {
     font-size: 24px;
+    margin: 0;
     color: var(--theme-dark-highlight);
 }
 
 section {
-    padding: 24px;
+    padding: 48px 24px 0 24px;
     box-sizing: border-box;
+}
+
+.icon {
+    height: 24px;
+    width: 24px;
+}
+
+.primary-icon {
+    color: var(--theme-dark-primary);
 }
 
 .tracking {
@@ -100,13 +111,28 @@ section {
 }
 
 .controls button {
-    font-size: 24px;
     border-radius: 50%;
-    width: 58px;
-    height: 58px;
+    padding: 16px;
+    width: 64px;
+    height: 64px;
     display: flex;
     justify-content: center;
     align-items: center;
     border: 1px solid var(--theme-dark-primary);
     background-color: var(--theme-dark-transparent);
+    color: white;
+    fill: white;
+}
+
+.track-button {
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+
+.track-button svg {
+    height: 24px;
+    width: 24px;
 }
