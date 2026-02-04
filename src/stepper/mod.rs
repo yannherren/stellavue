@@ -107,7 +107,9 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         acc: &mut Arc<Mutex<f32>>,
         sys_loop: &EspEventLoop<System>
     ) {
-        let tracking = tracking_active.lock().unwrap();
+        let tracking = {
+            *(tracking_active.lock().unwrap())
+        }; // important: read and release to prevent deadlock
         let mut step = step_pin.lock().unwrap();
         let mut acc = acc.lock().unwrap();
         let mut rotation_state = rotation_state.lock().unwrap();
@@ -142,12 +144,13 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                     *tracking_active = false;
                     return;
                 }
+                return;
             }
 
             if rotations != modified_rotations {
                 sys_loop.post::<StepperEvent>(&StepperEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
             }
-            if *tracking {
+            if tracking {
                 // Only post steps when tracking since the tracking speed is slow
                 // Otherwise too many events are fired
                 sys_loop.post::<StepperEvent>(&StepperEvent::StepComplete(modified_rotations, modified_offset), delay::BLOCK).unwrap();
