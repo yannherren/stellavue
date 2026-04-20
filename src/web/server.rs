@@ -1,17 +1,17 @@
-use std::collections::BTreeMap;
-use std::sync::Mutex;
 use crate::stepper::{StepperDirection, StepperEvent};
 use crate::web;
 use crate::web::protocol::CallbackHandler;
-use esp_idf_svc::eventloop::{EspEvent, EspEventLoop, EspSubscription, System};
+use crate::web::system_event::SystemEvent;
+use esp_idf_svc::eventloop::{EspEventLoop, EspSubscription, System};
+use esp_idf_svc::http::server::ws::EspHttpWsConnection;
 use esp_idf_svc::http::server::EspHttpServer;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Write;
 use esp_idf_svc::mdns::EspMdns;
 use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
 use esp_idf_svc::ws::FrameType;
-use log::info;
-use std::thread;
+use std::collections::BTreeMap;
+use std::sync::Mutex;
 
 static INDEX_HTML: &str = include_str!("webapp/index.html");
 static INDEX_CSS: &str = include_str!("webapp/stylesheet.css");
@@ -23,7 +23,6 @@ const COMMAND_LEN: usize = 2;
 pub struct WebServer {
     http_server: EspHttpServer<'static>,
     sys_loop: EspEventLoop<System>,
-    // event_subscription: Option<EspSubscription<'static, System>>
 }
 
 impl WebServer {
@@ -36,32 +35,9 @@ impl WebServer {
         let sys_loop_clone = sys_loop.clone();
         let mut sub = Mutex::new(BTreeMap::<i32, EspSubscription<System>>::new());
 
-        server
-            .fn_handler("/", Method::Get, |req| {
-                req.into_ok_response()?
-                    .write_all(INDEX_HTML.as_bytes())
-                    .map(|_| ())
-            })
-            .unwrap();
-
-        // TODO: Improve, do not repeat!
-        server
-            .fn_handler("/stylesheet.css", Method::Get, |req| {
-                let headers = [("Content-Type", "text/css")];
-                req.into_response(200, Some("OK"), &headers)?
-                    .write_all(INDEX_CSS.as_bytes())
-                    .map(|_| ())
-            })
-            .unwrap();
-
-        server
-            .fn_handler("/index.js", Method::Get, |req| {
-                let headers = [("Content-Type", "text/javascript")];
-                req.into_response(200, Some("OK"), &headers)?
-                    .write_all(INDEX_JS.as_bytes())
-                    .map(|_| ())
-            })
-            .unwrap();
+        Self::register_static_resource(&mut server, "/", INDEX_HTML, "text/html");
+        Self::register_static_resource(&mut server, "/stylesheet.css", INDEX_CSS, "text/css");
+        Self::register_static_resource(&mut server, "/index.js", INDEX_JS, "text/javascript");
 
         server
             .ws_handler("/ws/tracker", move |ws| {
@@ -75,22 +51,7 @@ impl WebServer {
                 }
 
                 if ws.is_new() {
-                    let mut subscriptions = sub.lock().unwrap();
-                    if subscriptions.contains_key(&ws.session()) {
-                        return Ok(())
-                    }
-
-                    let mut detached_sender = ws.create_detached_sender().unwrap();
-                    let subscription = sys_loop_clone.subscribe::<StepperEvent, _>(move |event| {
-                        detached_sender
-                            .send(
-                                FrameType::Binary(false),
-                                "Please enter a number between 1 and 100".as_bytes(),
-                            )
-                            .unwrap();
-                    })?;
-                    subscriptions.insert(ws.session(), subscription);
-
+                    Self::register_subscriptions(&*ws, &sub, &sys_loop_clone);
                     return Ok(());
                 }
 
@@ -114,8 +75,57 @@ impl WebServer {
         }
     }
 
-    fn map_event_to_response(event: StepperEvent) {
+    fn register_static_resource(
+        server: &mut EspHttpServer,
+        uri: &str,
+        content: &'static str,
+        content_type: &'static str,
+    ) {
+        server
+            .fn_handler(uri, Method::Get, move |req| {
+                let headers = [("Content-Type", content_type)];
+                req.into_response(200, Some("OK"), &headers)?
+                    .write_all(content.as_bytes())
+                    .map(|_| ())
+            })
+            .unwrap();
+    }
 
+    fn register_subscriptions(
+        ws: &EspHttpWsConnection,
+        subscriptions: &Mutex<BTreeMap<i32, EspSubscription<System>>>,
+        sys_loop: &EspEventLoop<System>,
+    ) {
+        let mut subscriptions = subscriptions.lock().unwrap();
+        if subscriptions.contains_key(&ws.session()) {
+            return;
+        }
+
+        let mut detached_sender = ws.create_detached_sender().unwrap();
+        let subscription = sys_loop
+            .subscribe::<StepperEvent, _>(move |event| {
+                detached_sender
+                    .send(
+                        FrameType::Binary(false),
+                        "Please enter a number between 1 and 100".as_bytes(),
+                    )
+                    .unwrap();
+            })
+            .unwrap();
+        subscriptions.insert(ws.session(), subscription);
+
+        let mut detached_sender = ws.create_detached_sender().unwrap();
+        let subscription = sys_loop
+            .subscribe::<SystemEvent, _>(move |event| {
+                detached_sender
+                    .send(
+                        FrameType::Binary(false),
+                        "Please enter a number between 1 and 100".as_bytes(),
+                    )
+                    .unwrap();
+            })
+            .unwrap();
+        subscriptions.insert(ws.session(), subscription);
     }
 
     fn create_web_server() -> EspHttpServer<'static> {
