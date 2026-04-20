@@ -9,6 +9,7 @@ use esp_idf_svc::timer::{EspTimer, EspTimerService};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use esp_idf_svc::hal::delay;
+use log::info;
 pub use crate::stepper::stepper_event::StepperEvent;
 
 const ROD_PITCH_MM: f32 = 1.25;
@@ -148,6 +149,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                 };
 
             if rotation_state.max_reached() || rotation_state.min_reached() {
+                info!("max reached: {:?}", tracking);
                 let timer = timer.lock().unwrap();
                 let mut tracking_active = tracking_active.lock().unwrap();
                 if let Some(ref timer) = *timer {
@@ -185,14 +187,24 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
         self.start_timer();
     }
 
+    pub fn set_tracking(&mut self, enabled: bool) {
+        if enabled {
+            self.start_tracking()
+        } else {
+            self.stop_movement()
+        }
+    }
+
     pub fn start_tracking(&mut self) {
         self.sys_loop.post::<StepperEvent>(&StepperEvent::TrackingStart, delay::BLOCK).unwrap();
         self.stop_movement();
+        self.set_direction(StepperDirection::UP);
         {
             let mut tracking_active = self.tracking.lock().unwrap();
             *tracking_active = true;
         }
         self.rotation_state.lock().unwrap().update_speed_from_config();
+        info!("start timer!!!");
         self.start_timer();
     }
 

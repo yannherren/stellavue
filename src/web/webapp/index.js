@@ -13,7 +13,7 @@ let adjusting = false;
 
 socket.addEventListener("open", (event) => {
     trackingButton.onclick = function () {
-        let command = 2 + (enabled ? 0 : 1 << 2);
+        let command = 2 + (enabled ? 0 : 1 << 4);
         send_command(command);
     }
     slider.onchange = function() {
