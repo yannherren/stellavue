@@ -1,25 +1,20 @@
+mod camera;
 mod stepper;
 mod web;
 mod wifi;
-mod camera;
 
-use std::cell::RefCell;
 use crate::web::protocol::CallbackHandler;
-use esp_idf_svc::eventloop::{EspEventLoop, EspSystemEventLoop};
-use esp_idf_svc::hal::delay::{Delay, Ets, FreeRtos};
-use esp_idf_svc::hal::gpio::{Pin, PinDriver};
+use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::hal::gpio::{InterruptType, Pin, PinDriver, Pull};
+use esp_idf_svc::hal::i2c::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
+use esp_idf_svc::hal::prelude::*;
+use esp_idf_svc::hal::task::notification::Notification;
 use esp_idf_svc::io::Write;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
+use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
-use embedded_hal_bus::i2c::RefCellDevice;
-use esp_idf_svc::hal::i2c::*;
-use esp_idf_svc::hal::prelude::*;
-use log::info;
-use mpu6050_dmp::address::Address;
-use mpu6050_dmp::sensor::Mpu6050;
-use crate::camera::CameraModule;
 
 fn main() -> Result<(), EspError> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -30,27 +25,8 @@ fn main() -> Result<(), EspError> {
     let peripherals = Peripherals::take()?;
     let sys_loop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
-
-    let i2c = peripherals.i2c0;
-    let sda = peripherals.pins.gpio6;
-    let sdc = peripherals.pins.gpio7;
-    // let shutter_pin = peripherals.pins.gpio5;
-
-    let config = I2cConfig::new().baudrate(Hertz(100_000));
-    let i2c0 = I2cDriver::new(i2c, sda, sdc, &config)?;
-    let i2c_ref_cell = RefCell::new(i2c0);
-
-
-
-    // let bus: &'static _ = shared_bus::new_std!(I2cDriver = i2c).unwrap();
-    // let bus = shared_bus::BusManagerSimple::new();
-
-    // let mut camera_module = CameraModule::new(RefCellDevice::new(&i2c_ref_cell), peripherals.pins.gpio5).unwrap();
-
-
-    // let mut mpu6050 = Mpu6050::new(RefCellDevice::new(&i2c_ref_cell), Address::default()).unwrap();
-    // let mut delay = Ets;
-    // mpu6050.initialize_dmp(&mut delay).unwrap();
+    let notification = Notification::new();
+    let notifier = notification.notifier();
 
     let step = PinDriver::output(peripherals.pins.gpio3)?;
     let dir = PinDriver::output(peripherals.pins.gpio4)?;
@@ -58,6 +34,17 @@ fn main() -> Result<(), EspError> {
 
     let stepper = stepper::Stepper::new(dir, step, sys_loop.clone());
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
+    stepper.lock().unwrap().start_calibration();
+
+    let mut limit_switch = PinDriver::input(peripherals.pins.gpio2)?;
+    limit_switch.set_pull(Pull::Up)?;
+    limit_switch.set_interrupt_type(InterruptType::PosEdge)?;
+
+    unsafe {
+        limit_switch.subscribe(move || {
+            notifier.notify_and_yield(NonZeroU32::new(1).unwrap());
+        })?;
+    }
 
     let stepper_clone = stepper.clone();
     let server_handler = CallbackHandler {
@@ -75,21 +62,11 @@ fn main() -> Result<(), EspError> {
 
     let _server = web::server::WebServer::new(server_handler, sys_loop.clone());
     loop {
-        FreeRtos::delay_ms(10000);
-        shutter.set_high()?;
-        FreeRtos::delay_ms(1000);
-        shutter.set_low()?;
-        // let x = camera_module.get_acc().unwrap();
-        // info!("{:?}", x)
-        // let gyro = mpu6050.get_acc_angles().unwrap();
-        //
-        // let x = gyro.x * (180.0 / PI);
-        // let y = gyro.y * (180.0 / PI);
+        limit_switch.enable_interrupt()?;
+        notification.wait(esp_idf_svc::hal::delay::BLOCK);
+        println!("Button pressed");
 
-        // let acc = mpu6050.accel().unwrap();
-        // info!("{:?}", acc.x());
-        // info!("Gyro: {x} {y}");
-
-        // info!("Acc: {:?}", acc);
+        let stepper_clone = stepper.clone();
+        stepper_clone.lock().unwrap().end_calibration();
     }
 }

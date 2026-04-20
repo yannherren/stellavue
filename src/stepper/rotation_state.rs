@@ -90,6 +90,11 @@ impl RotationState {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.rotation_offset = 0;
+        self.rotations = 0;
+    }
+
     pub fn set_speed(&mut self, steps_per_second: u16) {
         self.steps_per_second = steps_per_second;
     }

@@ -12,7 +12,7 @@ use esp_idf_svc::hal::delay;
 pub use crate::stepper::stepper_event::StepperEvent;
 
 const ROD_PITCH_MM: f32 = 1.25;
-const STEPS_PER_ROTATION: u32 = 3600;
+const STEPS_PER_ROTATION: u16 = 3600;
 
 #[derive(PartialEq)]
 pub enum StepperDirection {
@@ -23,6 +23,7 @@ pub enum StepperDirection {
 pub struct Stepper<STATE, D, S> where D: OutputPin, S: OutputPin {
     state: STATE,
     tracking: Arc<Mutex<bool>>,
+    calibrating: Arc<Mutex<bool>>,
     dir_pin: Arc<Mutex<PinDriver<'static, D, Output>>>,
     step_pin: Arc<Mutex<PinDriver<'static, S, Output>>>,
     rotation_state: Arc<Mutex<RotationState>>,
@@ -41,6 +42,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         Stepper {
             state: Off,
             tracking: Arc::new(Mutex::new(false)),
+            calibrating: Arc::new(Mutex::new(false)),
             dir_pin: Arc::new(Mutex::new(dir)),
             step_pin: Arc::new(Mutex::new(step)),
             rotation_state: Arc::new(Mutex::new(RotationState::new())),
@@ -56,6 +58,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 
         let callback_timer = {
             let tracking_active = self.tracking.clone();
+            let calibration_active = self.calibrating.clone();
             let current_direction = self.direction.clone();
             let mut rotation_state_clone = self.rotation_state.clone();
             let mut step_pin_clone = self.step_pin.clone();
@@ -67,6 +70,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                 &mut timer_clone,
                 &current_direction,
                 &tracking_active,
+                &calibration_active,
                 &mut step_pin_clone,
                 &mut rotation_state_clone,
                 &mut acc_clone,
@@ -89,6 +93,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         Stepper {
             state: On,
             tracking: self.tracking.clone(),
+            calibrating: self.calibrating.clone(),
             dir_pin: self.dir_pin.clone(),
             step_pin: self.step_pin.clone(),
             direction: self.direction.clone(),
@@ -102,6 +107,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         timer: &mut Arc<Mutex<Option<EspTimer>>>,
         direction: &Arc<Mutex<StepperDirection>>,
         tracking_active: &Arc<Mutex<bool>>,
+        calibration_active: &Arc<Mutex<bool>>,
         step_pin: &mut Arc<Mutex<PinDriver<'static, S, Output>>>,
         rotation_state: &mut Arc<Mutex<RotationState>>,
         acc: &mut Arc<Mutex<f32>>,
@@ -125,6 +131,12 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             step.set_low().unwrap();
 
             let (rotations, _offset) = rotation_state.get_rotation();
+
+            let calibrating = calibration_active.lock().unwrap();
+
+            if *calibrating {
+                return;
+            }
 
             let direction = direction.lock().unwrap();
 
@@ -193,6 +205,23 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
             }
             self.stop_timer();
         }
+    }
+
+
+    pub fn start_calibration(&mut self) {
+        {
+            let mut calibrating = self.calibrating.lock().unwrap();
+            *calibrating = true;
+        }
+        self.move_constant(StepperDirection::DOWN, STEPS_PER_ROTATION); // one rotation per second
+    }
+
+
+    pub fn end_calibration(&mut self) {
+        self.stop_movement();
+        self.rotation_state.lock().unwrap().reset();
+        let mut calibrating = self.calibrating.lock().unwrap();
+        *calibrating = false;
     }
 
     fn set_direction(&mut self, new_direction: StepperDirection) {
