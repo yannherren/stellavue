@@ -45,16 +45,23 @@ fn main() -> Result<(), EspError> {
             notifier.notify_and_yield(NonZeroU32::new(1).unwrap());
         })?;
     }
-
     let stepper_clone = stepper.clone();
+    let stepper_clone2 = stepper.clone();
+
     let server_handler = CallbackHandler {
-        move_constant: move |direction, steps_per_second| {
+        move_constant: Box::new(move |direction, steps_per_second| {
             stepper_clone
                 .lock()
                 .unwrap()
                 .move_constant(direction, steps_per_second)
-        },
-        set_tracking: move |enable| (),
+        }),
+        start_calibration: Box::new(move || {
+            stepper_clone2
+                .lock()
+                .unwrap()
+                .start_calibration()
+        }),
+        set_tracking: Box::new(move |enable| ()),
     };
 
     let mut wifi = wifi::WifiConnection::new(peripherals.modem, sys_loop.clone(), Some(nvs));

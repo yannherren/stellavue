@@ -12,13 +12,14 @@ use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
 use esp_idf_svc::ws::FrameType;
 use std::collections::BTreeMap;
 use std::sync::Mutex;
+use log::info;
 
 static INDEX_HTML: &str = include_str!("webapp/index.html");
 static INDEX_CSS: &str = include_str!("webapp/stylesheet.css");
 
 static INDEX_JS: &str = include_str!("webapp/index.js");
 
-const COMMAND_LEN: usize = 2;
+const COMMAND_LEN: usize = 4;
 
 pub struct WebServer {
     http_server: EspHttpServer<'static>,
@@ -26,10 +27,7 @@ pub struct WebServer {
 }
 
 impl WebServer {
-    pub fn new<M, T>(handler: CallbackHandler<M, T>, sys_loop: EspEventLoop<System>) -> Self
-    where
-        M: Fn(StepperDirection, u16) + Send + Sync + 'static,
-        T: Fn(bool) + Send + Sync + 'static,
+    pub fn new(handler: CallbackHandler, sys_loop: EspEventLoop<System>) -> Self
     {
         let mut server = WebServer::create_web_server();
         let sys_loop_clone = sys_loop.clone();
@@ -62,7 +60,8 @@ impl WebServer {
                 let mut buf = [0; COMMAND_LEN];
                 ws.recv(buf.as_mut())?;
 
-                let command: u16 = ((buf[0] as u16) << 8) + buf[1] as u16;
+                let command: u32 = ((buf[0] as u32) << 24) + ((buf[1] as u32) << 16) + ((buf[2] as u32) << 8) + buf[3] as u32;
+
                 web::protocol::map_command(&handler, command);
 
                 return Ok::<(), EspError>(());

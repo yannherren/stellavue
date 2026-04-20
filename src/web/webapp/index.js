@@ -27,7 +27,8 @@ socket.addEventListener("open", (event) => {
         let command;
         const upDirection = 1;
         if (adjusting) command = 1;
-        else command = 1 + (upDirection << 2) + (adjustingSpeed << 3);
+        else command = 1 + (upDirection << 4) + (adjustingSpeed << 5);
+        console.log(command)
         adjusting = !adjusting;
         send_command(command);
     }
@@ -36,7 +37,7 @@ socket.addEventListener("open", (event) => {
         let command;
         const downDirection = 0;
         if (adjusting) command = 1;
-        else command = 1 + (downDirection << 2) + (adjustingSpeed << 3);
+        else command = 1 + (downDirection << 4) + (adjustingSpeed << 5);
         adjusting = !adjusting;
         send_command(command);
     }
@@ -49,9 +50,9 @@ socket.addEventListener('message', function (msg) {
 });
 
 function send_command(command) {
-    const buffer = new ArrayBuffer(2);
+    const buffer = new ArrayBuffer(4);
     const view = new DataView(buffer);
-    view.setInt16(0, command, false);
+    view.setInt32(0, command, false);
 
     socket.send(buffer);
 }

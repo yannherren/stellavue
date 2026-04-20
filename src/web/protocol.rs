@@ -2,6 +2,7 @@ use log::info;
 use crate::stepper::StepperDirection;
 use crate::stepper::StepperDirection::{DOWN, UP};
 
+
 pub enum ResponseType {
     AllMovementStopped,
     ConstantMovementStarted(u8, u16),
@@ -10,31 +11,28 @@ pub enum ResponseType {
     HeightChanged(u16),
 }
 
-pub struct CallbackHandler<M, T>
-where
-    M: Fn(StepperDirection, u16),
-    T: Fn(bool)
+pub struct CallbackHandler
 {
-    pub move_constant: M,
-    pub set_tracking: T
+    pub move_constant: Box<dyn Fn(StepperDirection, u16) + Send + Sync>,
+    pub start_calibration: Box<dyn Fn() + Send + Sync>,
+    pub set_tracking: Box<dyn Fn(bool) + Send + Sync>
 }
 
-pub fn map_command<M, T>(handler: &CallbackHandler<M, T>, command: u16)
-where
-    M: Fn(StepperDirection, u16),
-    T: Fn(bool)
+pub fn map_command(handler: &CallbackHandler, command: u32)
 {
-    let command_type = 0b11 & command;
-    let payload = command >> 2;
+    let command_type = 0b1111 & command;
+    let payload = command >> 4;
     match command_type {
-        0b01 => {
+        0b0000 => {
+            (handler.start_calibration)();
+        }
+        0b0001 => {
             let direction = 0x1 & payload;
-            info!("{:?}", direction);
             let direction = if direction == 1 { UP } else { DOWN };
             let speed = payload >> 1;
-            (handler.move_constant)(direction, speed);
+            (handler.move_constant)(direction, speed as u16);
         }
-        0b10 => {
+        0b0010 => {
             let state = 0x1 & payload;
             let enable = if state == 1 { true } else { false };
             (handler.set_tracking)(enable);

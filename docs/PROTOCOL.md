@@ -3,21 +3,26 @@
 The communication between the client app served by the esp and the websocket is binary and allows for star tracker control
 
 ## Commands
-A command is each 2 bytes in MSB
+A command is each 4 bytes in MSB
 
-`[14 bit: Action Values] [2 bit: Action]`
+`[28 bit: Action Values] [4 bit: Action]`
 
 ### Action
  
-[//]: # (- `00`: **Request info**)
-- `01`: **Move with speed and direction (or stop)**
-- `10`: **Set tracking**
+- `0000`: **Start calibration**
+- `0001`: **Move with speed and direction (or stop)**
+- `0010`: **Set tracking**
+- `0011`: **Repeat last event**
 
 [//]: # (- `11`: **Set setting**)
 
+#### Calibration
+Start calibration at any given time
+
+`0000 0000 0000 0000`
 
 ### Move with speed and direction (or stop)
-`[13 bit: Speed] [1 bit: direction] 01`
+`[27 bit: Speed] [1 bit: direction] 0001`
 
 #### Direction
 - `0`: Down
@@ -34,7 +39,7 @@ Example command for 3200 steps per second:
 ### Set tracking
 Enable or disable tracking
 
-`[14 bit: Enable/disable] 10`
+`[27 bit: unused] [1 bit: Enable/disable] 0010`
 
 #### Enable/Disable
 - `0`: Disable
@@ -43,18 +48,23 @@ Enable or disable tracking
 Example command for enabling tracking
 `0b 0000 0000 0000 0110` or `0x6`
 
+#### Calibration
+Request the tracker to resend its last event 
+
+`0000 0000 0000 0011`
 
 ## Responses
-A response from the server is each 2 bytes in MSB
+A response from the server is each 4 bytes in MSB
 
-`[14 bit: Values] [2 bit: Type]`
+`[28 bit: Values] [2 bit: Type]`
 
 ### Response types
 
-- `00`: **All movement stopped**
-- `01`: **Constant movement started**
-- `10`: **Tracking started**
-- `11`: **Tracker height changed**
+- `0000`: **All movement stopped**
+- `0001`: **Constant movement started**
+- `0010`: **Tracking started**
+- `0011`: **Tracker height changed**
+- `0100`: **Calibration started**
 
 ### All movement stopped
 All movement (constant and tracking) has stopped. Tracker is not busy anymore
@@ -71,10 +81,6 @@ Star tracking has started with dynamic speed
 
 `0000 0000 0000 0010`
 
-#### Exception
-Calibration is ongoing when third bit is set
-
-`0000 0000 0000 0110`
 
 ### Tracker height changed
 Notification that the height has changed. 
@@ -82,6 +88,13 @@ Notification that the height has changed.
 - 100% = Tracker is at the top and can't go any further, it needs to be repositioned 
 
 `0000 000 [7 bits: height in percentage] 11`
+
+### Tracking started
+Star tracking has started calibrating
+
+`0000 0000 0000 0100`
+ 
+It responds with "All movement stopped" once finished
 
 
 
