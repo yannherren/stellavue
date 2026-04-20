@@ -32,6 +32,10 @@ It focuses on:
 - TMC2208 stepper motor driver
 - External power supply suitable for motor and controller
 
+### PCB schematic
+
+![Schema](docs/schematic.png)
+
 ## Software Requirements
 
 - Rust (nightly toolchain)

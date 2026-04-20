@@ -64,8 +64,6 @@ fn main() -> Result<(), EspError> {
     loop {
         limit_switch.enable_interrupt()?;
         notification.wait(esp_idf_svc::hal::delay::BLOCK);
-        println!("Button pressed");
-
         let stepper_clone = stepper.clone();
         stepper_clone.lock().unwrap().end_calibration();
     }
