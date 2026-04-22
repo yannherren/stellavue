@@ -2,6 +2,7 @@ mod camera;
 mod stepper;
 mod web;
 mod wifi;
+mod system;
 
 use crate::web::protocol::CallbackHandler;
 use esp_idf_svc::eventloop::EspSystemEventLoop;

@@ -1,5 +1,4 @@
 mod rotation_state;
-mod stepper_event;
 
 use crate::stepper::rotation_state::RotationState;
 use esp_idf_svc::eventloop::{EspEventDeserializer, EspEventLoop, EspEventSerializer, EspEventSource, System};
@@ -10,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use esp_idf_svc::hal::delay;
 use log::info;
-pub use crate::stepper::stepper_event::StepperEvent;
+use crate::system::system_event::SystemEvent;
 
 const ROD_PITCH_MM: f32 = 1.25;
 const STEPS_PER_ROTATION: u16 = 3600;
@@ -153,7 +152,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
                 let timer = timer.lock().unwrap();
                 let mut tracking_active = tracking_active.lock().unwrap();
                 if let Some(ref timer) = *timer {
-                    sys_loop.post::<StepperEvent>(&StepperEvent::MovementStop, delay::BLOCK).unwrap();
+                    sys_loop.post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK).unwrap();
                     (*timer).cancel().unwrap();
                     *tracking_active = false;
                     return;
@@ -162,12 +161,12 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             }
 
             if rotations != modified_rotations {
-                sys_loop.post::<StepperEvent>(&StepperEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
+                sys_loop.post::<SystemEvent>(&SystemEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
             }
             if tracking {
                 // Only post steps when tracking since the tracking speed is slow
                 // Otherwise too many events are fired
-                sys_loop.post::<StepperEvent>(&StepperEvent::StepComplete(modified_rotations, modified_offset), delay::BLOCK).unwrap();
+                sys_loop.post::<SystemEvent>(&SystemEvent::StepComplete(modified_rotations, modified_offset), delay::BLOCK).unwrap();
                 rotation_state.update_speed_from_config();
             }
         }
@@ -177,7 +176,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
 
     pub fn move_constant(&mut self, direction: StepperDirection, speed: u16) {
-        self.sys_loop.post::<StepperEvent>(&StepperEvent::MovementStartUp, delay::BLOCK).unwrap();
+        self.sys_loop.post::<SystemEvent>(&SystemEvent::MovementStartUp, delay::BLOCK).unwrap();
         self.stop_movement();
         self.set_direction(direction);
         {
@@ -196,7 +195,7 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
     }
 
     pub fn start_tracking(&mut self) {
-        self.sys_loop.post::<StepperEvent>(&StepperEvent::TrackingStart, delay::BLOCK).unwrap();
+        self.sys_loop.post::<SystemEvent>(&SystemEvent::TrackingStart, delay::BLOCK).unwrap();
         self.stop_movement();
         self.set_direction(StepperDirection::UP);
         {
@@ -209,7 +208,7 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
     }
 
     pub fn stop_movement(&mut self) {
-        self.sys_loop.post::<StepperEvent>(&StepperEvent::MovementStop, delay::BLOCK).unwrap();
+        self.sys_loop.post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK).unwrap();
         if self.timer_active() {
             {
                 let mut tracking_active = self.tracking.lock().unwrap();

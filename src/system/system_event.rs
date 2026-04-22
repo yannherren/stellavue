@@ -1,11 +1,18 @@
+
 use std::ffi::CStr;
 use esp_idf_svc::eventloop::{EspEvent, EspEventDeserializer, EspEventPostData, EspEventSerializer, EspEventSource};
 
-const NAME: &str = "SYSTEM_EVENT\0";
+const NAME: &str = "SystemEvent\0";
 
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub enum SystemEvent {
+    StepComplete(u16, u16),
+    RotationComplete(u16),
+    TrackingStart,
+    MovementStartUp,
+    MovementStartDown,
+    MovementStop,
     RepeatLastEvent
 }
 
