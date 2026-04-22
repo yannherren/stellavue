@@ -15,6 +15,7 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
+use crate::system::system_state::SystemState;
 use crate::web::server::CallbackHandler;
 
 fn main() -> Result<(), EspError> {
@@ -28,6 +29,8 @@ fn main() -> Result<(), EspError> {
     let nvs = EspDefaultNvsPartition::take()?;
     let notification = Notification::new();
     let notifier = notification.notifier();
+
+    let state = Arc::new(Mutex::new(SystemState::new()));
 
     let step = PinDriver::output(peripherals.pins.gpio3)?;
     let dir = PinDriver::output(peripherals.pins.gpio4)?;
@@ -51,24 +54,30 @@ fn main() -> Result<(), EspError> {
     let stepper_calibrate = stepper.clone();
     let stepper_track = stepper.clone();
 
+    let state_for_move = state.clone();
+    let state_for_calibrate = state.clone();
+    let state_for_track = state.clone();
+
     let server_handler = CallbackHandler {
         move_constant: Box::new(move |direction, steps_per_second| {
-            stepper_move
-                .lock()
-                .unwrap()
-                .move_constant(direction, steps_per_second)
+            let mut state = state_for_move.lock().unwrap();
+            if state.transition(SystemState::Moving) {
+                stepper_move.lock().unwrap().move_constant(direction, steps_per_second)
+            }
         }),
         start_calibration: Box::new(move || {
-            stepper_calibrate
-                .lock()
-                .unwrap()
-                .start_calibration()
+            let mut state = state_for_calibrate.lock().unwrap();
+            if state.transition(SystemState::Calibrating) {
+                stepper_calibrate.lock().unwrap().start_calibration()
+            }
         }),
         set_tracking: Box::new(move |enable| {
-            stepper_track
-                .lock()
-                .unwrap()
-                .set_tracking(enable)
+            let mut state = state_for_track.lock().unwrap();
+            if enable && state.transition(SystemState::Tracking) {
+                stepper_track.lock().unwrap().set_tracking(true);
+            } else if state.transition(SystemState::Idle) {
+                stepper_track.lock().unwrap().set_tracking(false);
+            }
         }),
     };
 
@@ -81,5 +90,6 @@ fn main() -> Result<(), EspError> {
         notification.wait(esp_idf_svc::hal::delay::BLOCK);
         let stepper_clone = stepper.clone();
         stepper_clone.lock().unwrap().end_calibration();
+        state.lock().unwrap().transition(SystemState::Idle);
     }
 }
