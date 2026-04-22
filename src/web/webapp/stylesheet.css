@@ -93,6 +93,7 @@ section {
     justify-content: center;
     align-items: center;
     border-radius: 50%;
+    transition: 1s;
 }
 
 .percentage-value {

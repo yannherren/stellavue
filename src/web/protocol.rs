@@ -1,3 +1,4 @@
+use log::info;
 use crate::stepper::StepperDirection::{DOWN, UP};
 use crate::stepper::{StepperDirection, MAX_ROTATIONS, STEPS_PER_ROTATION};
 use crate::system::system_event::SystemEvent;
@@ -53,13 +54,15 @@ pub fn event_to_response(event: SystemEvent) -> Option<ResponseType> {
             let total_steps =
                 u32::from(rotations) * u32::from(STEPS_PER_ROTATION) + u32::from(offset);
             let max_steps: u32 = u32::from(MAX_ROTATIONS) * u32::from(STEPS_PER_ROTATION);
-            let percentage = total_steps / max_steps * 100;
+            let percentage = total_steps * 100 / max_steps;
+            info!("{:?}", percentage);
             Some(ResponseType::HeightChanged(percentage as u16))
         }
         SystemEvent::RotationComplete(rotations) => {
             let total_steps = u32::from(rotations) * u32::from(STEPS_PER_ROTATION);
             let max_steps: u32 = u32::from(MAX_ROTATIONS) * u32::from(STEPS_PER_ROTATION);
-            let percentage = total_steps / max_steps * 100;
+            let percentage = total_steps * 100 / max_steps;
+            info!("{:?}", percentage);
             Some(ResponseType::HeightChanged(percentage as u16))
         }
         SystemEvent::TrackingStart => Some(ResponseType::TrackingStarted),
@@ -71,17 +74,17 @@ pub fn event_to_response(event: SystemEvent) -> Option<ResponseType> {
     }
 }
 
-pub fn parse_response(response_type: ResponseType) -> [u8; 2] {
-    let mut command = 0;
+pub fn parse_response(response_type: ResponseType) -> [u8; 4] {
+    let mut command: u32 = 0;
 
     match response_type {
         ResponseType::ConstantMovementStarted(direction, speed) => {
-            command = speed << 3 + direction << 2 + 1
+            command = (speed << 5) as u32 + (direction << 4) as u32 + 0b0001
         }
-        ResponseType::HeightChanged(percentage) => command = percentage << 2 + 0b11,
+        ResponseType::HeightChanged(percentage) => command = (percentage << 4) as u32 + 0b0011,
         ResponseType::AllMovementStopped => command = 0,
-        ResponseType::TrackingStarted => command = 0b10,
-        ResponseType::CalibrationStarted => command = 0b110,
+        ResponseType::TrackingStarted => command = 0b0010,
+        ResponseType::CalibrationStarted => command = 0b0100,
     }
 
     command.to_be_bytes()

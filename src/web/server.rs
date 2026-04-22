@@ -12,6 +12,7 @@ use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
 use esp_idf_svc::ws::FrameType;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use log::info;
 
 static INDEX_HTML: &str = include_str!("webapp/index.html");
 static INDEX_CSS: &str = include_str!("webapp/stylesheet.css");
@@ -173,6 +174,7 @@ impl WebServer {
     fn send_event_response(detached_sender: &mut EspHttpWsDetachedSender, event: &SystemEvent) {
         if let Some(response) = event_to_response(*event) {
             let byte_response = parse_response(response);
+            info!("{:?}", byte_response);
             detached_sender
                 .send(FrameType::Binary(false), &byte_response)
                 .unwrap();

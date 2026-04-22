@@ -5,6 +5,8 @@ const slider = document.querySelector(".slider");
 const trackingButton = document.querySelector(".track-button");
 const upButton = document.querySelector(".up-button");
 const downButton = document.querySelector(".down-button");
+const percentageValue = document.querySelector(".percentage-value");
+const percentageBar = document.querySelector(".percentage");
 
 const adjustingSpeed = 6400;
 
@@ -16,7 +18,7 @@ socket.addEventListener("open", (event) => {
         let command = 2 + (enabled ? 0 : 1 << 4);
         send_command(command);
     }
-    slider.onchange = function() {
+    slider.onchange = function () {
         const speed = this.value;
         const direction = 1;
         let command = 1 + (direction << 2) + (speed << 3);
@@ -28,7 +30,6 @@ socket.addEventListener("open", (event) => {
         const upDirection = 1;
         if (adjusting) command = 1;
         else command = 1 + (upDirection << 4) + (adjustingSpeed << 5);
-        console.log(command)
         adjusting = !adjusting;
         send_command(command);
     }
@@ -43,11 +44,56 @@ socket.addEventListener("open", (event) => {
     }
 });
 
-socket.addEventListener('message', function (msg) {
+socket.addEventListener('message', async function (msg) {
+    // const dataBytes = new Uint32Array(await msg.data.bytes());
+    // console.log(dataBytes)
+
+    // const data = dataBytes[3] << 24 + dataBytes[2] << 16 + dataBytes[1] << 8 + dataBytes[0]
+
+    const buffer = await msg.data.arrayBuffer();
+    const data = new DataView(buffer).getInt32(0)
+    const commandType = data & 0xF;
+    const payload = data >> 4;
+
+    switch (commandType) {
+        case 0:
+            console.log("Stopped!")
+            break;
+        case 0x1:
+            const direction = data & 0x1;
+            const speed = data >> 1;
+            console.log("Constant movement started - dir: " + direction + ", speed: " + speed)
+            break;
+        case 0x2:
+            console.log("Tracking started")
+            break;
+        case 0x3:
+            console.log("Tracker height changed: " + payload + "%")
+            updatePercentage(payload)
+            break;
+        case 0x4:
+            console.log("Calibration started")
+            break;
+        default:
+            console.log("Unknown command!")
+    }
+
     const el = document.createElement('div');
     el.innerHTML = msg.data.toString();
     logEl.appendChild(el);
 });
+
+function updatePercentage(percentage) {
+    percentageValue.innerHTML = percentage.toString() + "%";
+    percentageBar.style.background = `conic-gradient(
+            var(--theme-dark-primary) ${360 * (percentage / 100)}deg,
+            var(--theme-dark-accent) ${360 * (percentage / 100)}deg
+    )`
+    console.log(`conic-gradient(
+            var(--theme-dark-primary) ${360 * (percentage / 100)}deg,
+            var(--theme-dark-accent) ${360 * (percentage / 100)}deg
+    )`)
+}
 
 function send_command(command) {
     const buffer = new ArrayBuffer(4);
