@@ -1,3 +1,5 @@
+// TODO: divide logic into StepperDriver (HW) and StepperController (algo & tracking..)
+
 mod rotation_state;
 
 use crate::stepper::rotation_state::RotationState;
