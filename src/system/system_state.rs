@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum SystemState {
     Tracking,
     Calibrating,

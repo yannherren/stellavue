@@ -13,6 +13,7 @@ use esp_idf_svc::ws::FrameType;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use log::info;
+use crate::system::system_state::SystemState;
 
 static INDEX_HTML: &str = include_str!("webapp/index.html");
 static INDEX_CSS: &str = include_str!("webapp/stylesheet.css");
@@ -30,6 +31,8 @@ pub struct WebServer {
 pub struct CallbackHandler {
     pub move_constant: Box<dyn Fn(StepperDirection, u16) + Send + Sync>,
     pub start_calibration: Box<dyn Fn() + Send + Sync>,
+    pub stop: Box<dyn Fn() + Send + Sync>,
+    pub get_state: Box<dyn Fn() -> SystemState + Send + Sync>,
     pub set_tracking: Box<dyn Fn(bool) + Send + Sync>,
 }
 

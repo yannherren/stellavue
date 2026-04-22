@@ -53,10 +53,13 @@ fn main() -> Result<(), EspError> {
     let stepper_move = stepper.clone();
     let stepper_calibrate = stepper.clone();
     let stepper_track = stepper.clone();
+    let stepper_stop = stepper.clone();
 
     let state_for_move = state.clone();
     let state_for_calibrate = state.clone();
     let state_for_track = state.clone();
+    let state_for_stop = state.clone();
+    let state_for_read = state.clone();
 
     let server_handler = CallbackHandler {
         move_constant: Box::new(move |direction, steps_per_second| {
@@ -78,6 +81,16 @@ fn main() -> Result<(), EspError> {
             } else if state.transition(SystemState::Idle) {
                 stepper_track.lock().unwrap().set_tracking(false);
             }
+        }),
+        stop: Box::new(move || {
+            let mut state = state_for_stop.lock().unwrap();
+            if state.transition(SystemState::Idle) {
+                stepper_stop.lock().unwrap().stop_movement(true);
+            }
+        }),
+        get_state: Box::new(move || {
+            let state = state_for_read.lock().unwrap();
+            *state
         }),
     };
 
