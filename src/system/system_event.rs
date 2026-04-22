@@ -7,11 +7,11 @@ const NAME: &str = "SystemEvent\0";
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub enum SystemEvent {
+    CalibrationStarted,
     StepComplete(u16, u16),
     RotationComplete(u16),
     TrackingStart,
-    MovementStartUp,
-    MovementStartDown,
+    MovementStarted(u8, u16),
     MovementStop,
     RepeatLastEvent
 }

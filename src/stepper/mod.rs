@@ -1,18 +1,21 @@
 mod rotation_state;
 
 use crate::stepper::rotation_state::RotationState;
-use esp_idf_svc::eventloop::{EspEventDeserializer, EspEventLoop, EspEventSerializer, EspEventSource, System};
+pub use crate::stepper::rotation_state::{STEPS_PER_ROTATION, MAX_ROTATIONS};
+use crate::stepper::StepperDirection::UP;
+use crate::system::system_event::SystemEvent;
+use esp_idf_svc::eventloop::{
+    EspEventDeserializer, EspEventLoop, EspEventSerializer, EspEventSource, System,
+};
+use esp_idf_svc::hal::delay;
 use esp_idf_svc::hal::delay::Ets;
 use esp_idf_svc::hal::gpio::{Output, OutputPin, PinDriver};
 use esp_idf_svc::timer::{EspTimer, EspTimerService};
+use log::info;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use esp_idf_svc::hal::delay;
-use log::info;
-use crate::system::system_event::SystemEvent;
 
 const ROD_PITCH_MM: f32 = 1.25;
-const STEPS_PER_ROTATION: u16 = 3600;
 
 #[derive(PartialEq)]
 pub enum StepperDirection {
@@ -20,7 +23,11 @@ pub enum StepperDirection {
     DOWN,
 }
 
-pub struct Stepper<STATE, D, S> where D: OutputPin, S: OutputPin {
+pub struct Stepper<STATE, D, S>
+where
+    D: OutputPin,
+    S: OutputPin,
+{
     state: STATE,
     tracking: Arc<Mutex<bool>>,
     calibrating: Arc<Mutex<bool>>,
@@ -29,16 +36,23 @@ pub struct Stepper<STATE, D, S> where D: OutputPin, S: OutputPin {
     rotation_state: Arc<Mutex<RotationState>>,
     direction: Arc<Mutex<StepperDirection>>,
     timer: Arc<Mutex<Option<EspTimer<'static>>>>,
-    sys_loop: EspEventLoop<System>
+    sys_loop: EspEventLoop<System>,
 }
 
 pub struct Off;
 
 pub struct On;
 
-impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
-
-    pub fn new(dir: PinDriver<'static, D, Output>, step: PinDriver<'static, S, Output>, sys_loop: EspEventLoop<System>) -> Self {
+impl<D, S> Stepper<Off, D, S>
+where
+    D: OutputPin,
+    S: OutputPin,
+{
+    pub fn new(
+        dir: PinDriver<'static, D, Output>,
+        step: PinDriver<'static, S, Output>,
+        sys_loop: EspEventLoop<System>,
+    ) -> Self {
         Stepper {
             state: Off,
             tracking: Arc::new(Mutex::new(false)),
@@ -48,7 +62,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             rotation_state: Arc::new(Mutex::new(RotationState::new())),
             direction: Arc::new(Mutex::new(StepperDirection::UP)),
             timer: Arc::new(Mutex::new(None)),
-            sys_loop
+            sys_loop,
         }
     }
 
@@ -66,16 +80,20 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             let mut timer_clone = self.timer.clone();
             let sys_loop_clone = self.sys_loop.clone();
 
-            timer_service.timer(move || Self::timer_tick(
-                &mut timer_clone,
-                &current_direction,
-                &tracking_active,
-                &calibration_active,
-                &mut step_pin_clone,
-                &mut rotation_state_clone,
-                &mut acc_clone,
-                &sys_loop_clone
-            )).unwrap()
+            timer_service
+                .timer(move || {
+                    Self::timer_tick(
+                        &mut timer_clone,
+                        &current_direction,
+                        &tracking_active,
+                        &calibration_active,
+                        &mut step_pin_clone,
+                        &mut rotation_state_clone,
+                        &mut acc_clone,
+                        &sys_loop_clone,
+                    )
+                })
+                .unwrap()
         };
 
         // let sys_loop_clone = self.sys_loop.clone();
@@ -99,7 +117,7 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             direction: self.direction.clone(),
             rotation_state: self.rotation_state.clone(),
             timer: self.timer.clone(),
-            sys_loop: self.sys_loop.clone()
+            sys_loop: self.sys_loop.clone(),
         }
     }
 
@@ -111,16 +129,16 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
         step_pin: &mut Arc<Mutex<PinDriver<'static, S, Output>>>,
         rotation_state: &mut Arc<Mutex<RotationState>>,
         acc: &mut Arc<Mutex<f32>>,
-        sys_loop: &EspEventLoop<System>
+        sys_loop: &EspEventLoop<System>,
     ) {
-        let tracking = {
-            *(tracking_active.lock().unwrap())
-        }; // important: read and release to prevent deadlock
+        let tracking = { *(tracking_active.lock().unwrap()) }; // important: read and release to prevent deadlock
         let mut step = step_pin.lock().unwrap();
         let mut acc = acc.lock().unwrap();
         let mut rotation_state = rotation_state.lock().unwrap();
         let steps_per_second = rotation_state.steps_per_second;
-        if steps_per_second == 0 { return }
+        if steps_per_second == 0 {
+            return;
+        }
 
         *acc += steps_per_second as f32 / 10_000.0;
 
@@ -140,19 +158,20 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
 
             let direction = direction.lock().unwrap();
 
-            let (modified_rotations, modified_offset) =
-                if *direction == StepperDirection::UP {
-                    rotation_state.increment_step()
-                } else {
-                    rotation_state.decrement_step()
-                };
+            let (modified_rotations, modified_offset) = if *direction == StepperDirection::UP {
+                rotation_state.increment_step()
+            } else {
+                rotation_state.decrement_step()
+            };
 
             if rotation_state.max_reached() || rotation_state.min_reached() {
                 info!("max reached: {:?}", tracking);
                 let timer = timer.lock().unwrap();
                 let mut tracking_active = tracking_active.lock().unwrap();
                 if let Some(ref timer) = *timer {
-                    sys_loop.post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK).unwrap();
+                    sys_loop
+                        .post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK)
+                        .unwrap();
                     (*timer).cancel().unwrap();
                     *tracking_active = false;
                     return;
@@ -161,23 +180,42 @@ impl<D, S> Stepper<Off, D, S> where D: OutputPin, S: OutputPin {
             }
 
             if rotations != modified_rotations {
-                sys_loop.post::<SystemEvent>(&SystemEvent::RotationComplete(modified_rotations), delay::BLOCK).unwrap();
+                sys_loop
+                    .post::<SystemEvent>(
+                        &SystemEvent::RotationComplete(modified_rotations),
+                        delay::BLOCK,
+                    )
+                    .unwrap();
             }
             if tracking {
                 // Only post steps when tracking since the tracking speed is slow
                 // Otherwise too many events are fired
-                sys_loop.post::<SystemEvent>(&SystemEvent::StepComplete(modified_rotations, modified_offset), delay::BLOCK).unwrap();
+                sys_loop
+                    .post::<SystemEvent>(
+                        &SystemEvent::StepComplete(modified_rotations, modified_offset),
+                        delay::BLOCK,
+                    )
+                    .unwrap();
                 rotation_state.update_speed_from_config();
             }
         }
     }
 }
 
-impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
-
+impl<D, S> Stepper<On, D, S>
+where
+    D: OutputPin,
+    S: OutputPin,
+{
     pub fn move_constant(&mut self, direction: StepperDirection, speed: u16) {
-        self.sys_loop.post::<SystemEvent>(&SystemEvent::MovementStartUp, delay::BLOCK).unwrap();
-        self.stop_movement();
+        self.sys_loop
+            .post::<SystemEvent>(
+                &SystemEvent::MovementStarted(if direction == UP { 1 } else { 0 }, speed),
+                delay::BLOCK,
+            )
+            .unwrap();
+
+        self.stop_movement(false);
         self.set_direction(direction);
         {
             let mut rotation_state = self.rotation_state.lock().unwrap();
@@ -190,25 +228,34 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
         if enabled {
             self.start_tracking()
         } else {
-            self.stop_movement()
+            self.stop_movement(true)
         }
     }
 
     pub fn start_tracking(&mut self) {
-        self.sys_loop.post::<SystemEvent>(&SystemEvent::TrackingStart, delay::BLOCK).unwrap();
-        self.stop_movement();
+        self.sys_loop
+            .post::<SystemEvent>(&SystemEvent::TrackingStart, delay::BLOCK)
+            .unwrap();
+        self.stop_movement(false);
         self.set_direction(StepperDirection::UP);
         {
             let mut tracking_active = self.tracking.lock().unwrap();
             *tracking_active = true;
         }
-        self.rotation_state.lock().unwrap().update_speed_from_config();
+        self.rotation_state
+            .lock()
+            .unwrap()
+            .update_speed_from_config();
         info!("start timer!!!");
         self.start_timer();
     }
 
-    pub fn stop_movement(&mut self) {
-        self.sys_loop.post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK).unwrap();
+    pub fn stop_movement(&mut self, post_event: bool) {
+        if post_event {
+            self.sys_loop
+                .post::<SystemEvent>(&SystemEvent::MovementStop, delay::BLOCK)
+                .unwrap();
+        }
         if self.timer_active() {
             {
                 let mut tracking_active = self.tracking.lock().unwrap();
@@ -218,8 +265,10 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
         }
     }
 
-
     pub fn start_calibration(&mut self) {
+        self.sys_loop
+            .post::<SystemEvent>(&SystemEvent::CalibrationStarted, delay::BLOCK)
+            .unwrap();
         {
             let mut calibrating = self.calibrating.lock().unwrap();
             *calibrating = true;
@@ -227,9 +276,8 @@ impl<D, S> Stepper<On, D, S> where D: OutputPin, S: OutputPin {
         self.move_constant(StepperDirection::DOWN, STEPS_PER_ROTATION); // one rotation per second
     }
 
-
     pub fn end_calibration(&mut self) {
-        self.stop_movement();
+        self.stop_movement(true);
         self.rotation_state.lock().unwrap().reset();
         let mut calibrating = self.calibrating.lock().unwrap();
         *calibrating = false;

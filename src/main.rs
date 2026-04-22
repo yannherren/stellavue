@@ -4,7 +4,6 @@ mod web;
 mod wifi;
 mod system;
 
-use crate::web::protocol::CallbackHandler;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::gpio::{InterruptType, Pin, PinDriver, Pull};
 use esp_idf_svc::hal::i2c::*;
@@ -16,6 +15,7 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
+use crate::web::server::CallbackHandler;
 
 fn main() -> Result<(), EspError> {
     // It is necessary to call this function once. Otherwise some patches to the runtime

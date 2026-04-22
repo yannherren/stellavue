@@ -5,9 +5,9 @@ use log::info;
 
 const ROTATION_CONFIG: &str = include_str!("rotation_speeds.json");
 
-const STEPS_PER_ROTATION: u16 = 200 * 16; // 16x microstepping
+pub const STEPS_PER_ROTATION: u16 = 200 * 16; // 16x microstepping
 
-const MAX_ROTATIONS: u16 = 70;
+pub const MAX_ROTATIONS: u16 = 70;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct RotationConfigData {
