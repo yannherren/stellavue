@@ -26,7 +26,6 @@ const COMMAND_LEN: usize = 4;
 pub struct WebServer {
     http_server: EspHttpServer<'static>,
     sys_loop: EspEventLoop<System>,
-    last_event: Arc<Mutex<SystemEvent>>,
 }
 
 pub struct CallbackHandler {
@@ -37,37 +36,17 @@ pub struct CallbackHandler {
     pub set_tracking: Box<dyn Fn(bool) + Send + Sync>,
 }
 
-#[derive(Ord, Eq, PartialOrd, PartialEq)]
-enum SubscriptionType {
-    GlobalEventSubscriber,
-    SessionEventSubscriber(i32),
-}
 
 impl WebServer {
     pub fn new(handler: CallbackHandler, sys_loop: EspEventLoop<System>) -> Self {
         let sys_loop_clone = sys_loop.clone();
-        let last_event = Arc::new(Mutex::new(SystemEvent::CalibrationStarted));
 
         let mut server = WebServer::create_web_server();
-        let mut sub = Mutex::new(BTreeMap::<SubscriptionType, EspSubscription<System>>::new());
+        let sub = Mutex::new(BTreeMap::<i32, EspSubscription<System>>::new());
 
         Self::register_static_resource(&mut server, "/", INDEX_HTML, "text/html");
         Self::register_static_resource(&mut server, "/stylesheet.css", INDEX_CSS, "text/css");
         Self::register_static_resource(&mut server, "/index.js", INDEX_JS, "text/javascript");
-
-        let last_event_clone = last_event.clone();
-        let last_event_subscription = sys_loop
-            .subscribe::<SystemEvent, _>(move |event| {
-                let mut last_event = last_event_clone.lock().unwrap();
-                *last_event = event;
-            })
-            .unwrap();
-        sub.lock().unwrap().insert(
-            SubscriptionType::GlobalEventSubscriber,
-            last_event_subscription,
-        );
-
-        let last_event_clone = last_event.clone();
 
         server
             .ws_handler("/ws/tracker", move |ws| {
@@ -89,7 +68,7 @@ impl WebServer {
                 let mut buf = [0; COMMAND_LEN];
                 ws.recv(buf.as_mut())?;
 
-                Self::handle_command(&handler, &last_event_clone, &sys_loop_clone, buf);
+                Self::handle_command(&handler, &sys_loop_clone, buf);
 
                 return Ok::<(), EspError>(());
             })
@@ -98,13 +77,11 @@ impl WebServer {
         WebServer {
             http_server: server,
             sys_loop,
-            last_event,
         }
     }
 
     fn handle_command(
         handler: &CallbackHandler,
-        last_event: &Arc<Mutex<SystemEvent>>,
         sys_loop: &EspEventLoop<System>,
         buffer: [u8; COMMAND_LEN]
     ) {
@@ -147,7 +124,7 @@ impl WebServer {
 
     fn register_subscription(
         ws: &EspHttpWsConnection,
-        subscriptions: &Mutex<BTreeMap<SubscriptionType, EspSubscription<System>>>,
+        subscriptions: &Mutex<BTreeMap<i32, EspSubscription<System>>>,
         sys_loop: &EspEventLoop<System>,
     ) {
         let mut subscriptions = subscriptions.lock().unwrap();
@@ -158,19 +135,17 @@ impl WebServer {
                 Self::send_event_response(&mut detached_sender, &event)
             })
             .unwrap();
-        let stepper_key = SubscriptionType::SessionEventSubscriber(ws.session());
-        subscriptions.insert(stepper_key, subscription);
+        subscriptions.insert(ws.session(), subscription);
     }
 
     fn deregister_subscription(
-        subscriptions: &Mutex<BTreeMap<SubscriptionType, EspSubscription<System>>>,
+        subscriptions: &Mutex<BTreeMap<i32, EspSubscription<System>>>,
         session_id: i32,
     ) {
         let mut subscriptions = subscriptions.lock().unwrap();
 
-        let stepper_key = SubscriptionType::SessionEventSubscriber(session_id);
-        if subscriptions.contains_key(&stepper_key) {
-            subscriptions.remove(&stepper_key);
+        if subscriptions.contains_key(&session_id) {
+            subscriptions.remove(&session_id);
         }
     }
 

@@ -36,7 +36,7 @@ fn main() -> Result<(), EspError> {
     let dir = PinDriver::output(peripherals.pins.gpio4)?;
     let mut shutter = PinDriver::output(peripherals.pins.gpio5)?;
 
-    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone());
+    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone()); // TODO: add stop callback!
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
     stepper.lock().unwrap().start_calibration();
     {
