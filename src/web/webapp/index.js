@@ -2,7 +2,10 @@ const socket = new WebSocket("/ws/tracker");
 
 const logEl = document.querySelector('div[data-field="log"]');
 const slider = document.querySelector(".slider");
+const calibrating = document.querySelector(".calibrating");
 const trackingButton = document.querySelector(".track-button");
+const trackingContainer = document.querySelector(".tracking");
+const controlsContainer = document.querySelector(".controls");
 const upButton = document.querySelector(".up-button");
 const downButton = document.querySelector(".down-button");
 const percentageValue = document.querySelector(".percentage-value");
@@ -12,6 +15,15 @@ const adjustingSpeed = 6400;
 
 let enabled = false;
 let adjusting = false;
+
+const State = {
+    IDLE: "IDLE",
+    CALIBRATING: "CALIBRATING",
+    MOVING: "MOVING",
+    TRACKING: "TRACKING",
+}
+
+let state = State.IDLE
 
 socket.addEventListener("open", (event) => {
     let command = 3;
@@ -61,14 +73,17 @@ socket.addEventListener('message', async function (msg) {
     switch (commandType) {
         case 0:
             console.log("Stopped!")
+            updateState(State.IDLE);
             break;
         case 0x1:
             const direction = data & 0x1;
             const speed = data >> 1;
             console.log("Constant movement started - dir: " + direction + ", speed: " + speed)
+            updateState(State.MOVING);
             break;
         case 0x2:
             console.log("Tracking started")
+            updateState(State.TRACKING);
             break;
         case 0x3:
             console.log("Tracker height changed: " + payload + "%")
@@ -76,9 +91,11 @@ socket.addEventListener('message', async function (msg) {
             break;
         case 0x4:
             console.log("Calibration started")
+            updateState(State.CALIBRATING);
             break;
         case 0xF:
             console.log("Status response", payload)
+            updateState(State.CALIBRATING); //TODO: whatever
             break;
         default:
             console.log("Unknown command!")
@@ -88,6 +105,34 @@ socket.addEventListener('message', async function (msg) {
     el.innerHTML = msg.data.toString();
     logEl.appendChild(el);
 });
+
+function updateState(newState) {
+    state = newState;
+    switch (state) {
+        case State.CALIBRATING:
+            calibrating.style.display = 'block';
+            trackingContainer.style.display = 'none';
+            controlsContainer.style.display = 'none';
+            break;
+        case State.MOVING:
+            calibrating.style.display = 'none';
+            trackingContainer.style.display = 'inline-flex';
+            controlsContainer.style.display = 'flex';
+            break;
+        case State.IDLE:
+            calibrating.style.display = 'none';
+            trackingContainer.style.display = 'inline-flex';
+            controlsContainer.style.display = 'flex';
+            trackingButton.innerHTML = "Start tracking"
+            break;
+        case State.TRACKING:
+            calibrating.style.display = 'none';
+            trackingContainer.style.display = 'inline-flex';
+            controlsContainer.style.display = 'flex';
+            trackingButton.innerHTML = "Stop tracking"
+            break;
+    }
+}
 
 function updatePercentage(percentage) {
     percentageValue.innerHTML = percentage.toString() + "%";

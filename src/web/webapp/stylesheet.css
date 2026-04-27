@@ -132,8 +132,11 @@ section {
     gap: 16px;
 }
 
-
 .track-button svg {
     height: 24px;
     width: 24px;
+}
+
+.calibrating {
+    display: none;
 }
