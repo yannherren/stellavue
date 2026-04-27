@@ -14,6 +14,9 @@ let enabled = false;
 let adjusting = false;
 
 socket.addEventListener("open", (event) => {
+    let command = 3;
+    send_command(command);
+
     trackingButton.onclick = function () {
         let command = 2 + (enabled ? 0 : 1 << 4);
         send_command(command);
@@ -73,6 +76,9 @@ socket.addEventListener('message', async function (msg) {
             break;
         case 0x4:
             console.log("Calibration started")
+            break;
+        case 0xF:
+            console.log("Status response", payload)
             break;
         default:
             console.log("Unknown command!")

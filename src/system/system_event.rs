@@ -1,6 +1,7 @@
 
 use std::ffi::CStr;
 use esp_idf_svc::eventloop::{EspEvent, EspEventDeserializer, EspEventPostData, EspEventSerializer, EspEventSource};
+use crate::system::system_state::SystemState;
 
 const NAME: &str = "SystemEvent\0";
 
@@ -13,7 +14,7 @@ pub enum SystemEvent {
     TrackingStart,
     MovementStarted(u8, u16),
     MovementStop,
-    RepeatLastEvent
+    SystemStateInfo(SystemState)
 }
 
 unsafe impl EspEventSource for SystemEvent {

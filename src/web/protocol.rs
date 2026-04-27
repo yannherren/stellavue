@@ -2,6 +2,7 @@ use log::info;
 use crate::stepper::StepperDirection::{DOWN, UP};
 use crate::stepper::{StepperDirection, MAX_ROTATIONS, STEPS_PER_ROTATION};
 use crate::system::system_event::SystemEvent;
+use crate::system::system_state::SystemState;
 
 pub enum ResponseType {
     AllMovementStopped,
@@ -9,13 +10,14 @@ pub enum ResponseType {
     TrackingStarted,
     CalibrationStarted,
     HeightChanged(u16),
+    SystemStateInfo(SystemState),
 }
 
 pub enum Command {
     StartCalibration,
     MoveConstant(StepperDirection, u16),
     SetTracking(bool),
-    RepeatLastEvent,
+    RequestStatus,
     Unknown,
 }
 
@@ -42,7 +44,7 @@ pub fn map_command(
             let enable = if state == 1 { true } else { false };
             Command::SetTracking(enable)
         }
-        0b0011 => Command::RepeatLastEvent,
+        0b0011 => Command::RequestStatus,
         _ => Command::Unknown,
     }
 }
@@ -70,7 +72,7 @@ pub fn event_to_response(event: SystemEvent) -> Option<ResponseType> {
             Some(ResponseType::ConstantMovementStarted(direction, speed))
         }
         SystemEvent::MovementStop => Some(ResponseType::AllMovementStopped),
-        SystemEvent::RepeatLastEvent => None,
+        SystemEvent::SystemStateInfo(state) => Some(ResponseType::SystemStateInfo(state)),
     }
 }
 
@@ -85,6 +87,15 @@ pub fn parse_response(response_type: ResponseType) -> [u8; 4] {
         ResponseType::AllMovementStopped => command = 0,
         ResponseType::TrackingStarted => command = 0b0010,
         ResponseType::CalibrationStarted => command = 0b0100,
+        ResponseType::SystemStateInfo(state) => {
+            command = 0b1111;
+            match state {
+                SystemState::Tracking => command = 0b110000 | command,
+                SystemState::Calibrating => command = 0b010000 | command,
+                SystemState::Moving => command = 0b100000 | command,
+                SystemState::Idle => command = 0b000000 | command
+            }
+        },
     }
 
     command.to_be_bytes()

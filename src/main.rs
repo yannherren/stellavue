@@ -39,6 +39,10 @@ fn main() -> Result<(), EspError> {
     let stepper = stepper::Stepper::new(dir, step, sys_loop.clone());
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
     stepper.lock().unwrap().start_calibration();
+    {
+        let mut start_state = state.lock().unwrap();
+        *start_state = SystemState::Calibrating;
+    }
 
     let mut limit_switch = PinDriver::input(peripherals.pins.gpio2)?;
     limit_switch.set_pull(Pull::Up)?;

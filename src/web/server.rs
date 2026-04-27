@@ -12,6 +12,7 @@ use esp_idf_svc::sys::{EspError, ESP_ERR_INVALID_SIZE};
 use esp_idf_svc::ws::FrameType;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
+use esp_idf_svc::hal::delay;
 use log::info;
 use crate::system::system_state::SystemState;
 
@@ -88,7 +89,7 @@ impl WebServer {
                 let mut buf = [0; COMMAND_LEN];
                 ws.recv(buf.as_mut())?;
 
-                Self::handle_command(&handler, &last_event_clone, &ws, buf);
+                Self::handle_command(&handler, &last_event_clone, &sys_loop_clone, buf);
 
                 return Ok::<(), EspError>(());
             })
@@ -104,7 +105,7 @@ impl WebServer {
     fn handle_command(
         handler: &CallbackHandler,
         last_event: &Arc<Mutex<SystemEvent>>,
-        ws: &EspHttpWsConnection,
+        sys_loop: &EspEventLoop<System>,
         buffer: [u8; COMMAND_LEN]
     ) {
         let command_bits: u32 = ((buffer[0] as u32) << 24)
@@ -120,10 +121,9 @@ impl WebServer {
                 (handler.move_constant)(direction, speed)
             }
             Command::SetTracking(enable) => (handler.set_tracking)(enable),
-            Command::RepeatLastEvent => {
-                let mut sender = ws.create_detached_sender().unwrap();
-                let last_event_to_send = *last_event.lock().unwrap();
-                Self::send_event_response(&mut sender, &last_event_to_send)
+            Command::RequestStatus => {
+                let state = (handler.get_state)();
+                sys_loop.post::<SystemEvent>(&SystemEvent::SystemStateInfo(state), delay::BLOCK).unwrap();
             }
             Command::Unknown => {}
         }
@@ -180,7 +180,7 @@ impl WebServer {
             info!("{:?}", byte_response);
             detached_sender
                 .send(FrameType::Binary(false), &byte_response)
-                .unwrap();
+                .unwrap(); // TODO: Bug on reload
         }
     }
 

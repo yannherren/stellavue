@@ -12,7 +12,7 @@ A command is each 4 bytes in MSB
 - `0000`: **Start calibration**
 - `0001`: **Move with speed and direction (or stop)**
 - `0010`: **Set tracking**
-- `0011`: **Repeat last event**
+- `0011`: **Request state**
 
 [//]: # (- `11`: **Set setting**)
 
@@ -48,8 +48,8 @@ Enable or disable tracking
 Example command for enabling tracking
 `0b 0000 0000 0000 0110` or `0x6`
 
-#### Calibration
-Request the tracker to resend its last event 
+#### Request state
+Request the tracker to send its state 
 
 `0000 0000 0000 0011`
 
@@ -65,6 +65,7 @@ A response from the server is each 4 bytes in MSB
 - `0010`: **Tracking started**
 - `0011`: **Tracker height changed**
 - `0100`: **Calibration started**
+- `1111`: **State message**
 
 ### All movement stopped
 All movement (constant and tracking) has stopped. Tracker is not busy anymore
@@ -95,6 +96,20 @@ Star tracking has started calibrating
 `0000 0000 0000 0100`
  
 It responds with "All movement stopped" once finished
+
+### State message
+Returns the star trackers current state 
+
+`[26 bit zero] [2 bit: state] 1111`
+
+Following states are possible:
+
+`00`: Idle
+`01`: Calibrating
+`10`: Moving
+`11`: Tracking
+
+
 
 
 

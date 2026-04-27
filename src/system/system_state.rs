@@ -1,4 +1,4 @@
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum SystemState {
     Tracking,
     Calibrating,
@@ -26,7 +26,7 @@ impl SystemState {
     fn get_allowed_transitions(state: &SystemState) -> Vec<SystemState> {
         match state {
             SystemState::Tracking => Vec::from([SystemState::Idle]),
-            SystemState::Calibrating => Vec::from([]),
+            SystemState::Calibrating => Vec::from([SystemState::Idle]),
             SystemState::Moving => Vec::from([SystemState::Idle, SystemState::Moving]),
             SystemState::Idle => Vec::from([SystemState::Moving, SystemState::Calibrating, SystemState::Tracking])
         }
