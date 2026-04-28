@@ -34,6 +34,9 @@ pub struct CallbackHandler {
     pub stop: Box<dyn Fn() + Send + Sync>,
     pub get_state: Box<dyn Fn() -> SystemState + Send + Sync>,
     pub set_tracking: Box<dyn Fn(bool) + Send + Sync>,
+    pub trigger_test_capture: Box<dyn Fn() + Send + Sync>,
+    pub start_auto_capture: Box<dyn Fn(u32) + Send + Sync>,
+    pub stop_auto_capture: Box<dyn Fn() + Send + Sync>,
 }
 
 
@@ -103,13 +106,13 @@ impl WebServer {
                 sys_loop.post::<SystemEvent>(&SystemEvent::SystemStateInfo(state), delay::BLOCK).unwrap();
             }
             Command::TriggerTestCapture => {
-                // TODO: single capture
+                (handler.trigger_test_capture)();
             }
             Command::StartAutoCapture(interval) => {
-                // TODO: start auto capture
+                (handler.start_auto_capture)(interval);
             }
             Command::StopAutoCapture => {
-                // TODO: stop auto capture
+                (handler.stop_auto_capture)();
             }
             Command::Unknown => {}
         }
