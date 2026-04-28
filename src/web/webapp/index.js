@@ -1,5 +1,6 @@
 const socket = new WebSocket("/ws/tracker");
 
+const main = document.querySelector(".main");
 const logEl = document.querySelector('div[data-field="log"]');
 const slider = document.querySelector(".slider");
 const calibrating = document.querySelector(".calibrating");
@@ -13,11 +14,13 @@ const percentageBar = document.querySelector(".percentage");
 const shutterSpeed = document.querySelector(".shutter-speed");
 const testCaptureButton = document.querySelector(".test-capture");
 const autoCaptureButton = document.querySelector(".auto-capture");
+const nightModeButton = document.querySelector(".night-mode");
+const moveButtons = document.querySelectorAll(".move-button");
+const stopButton = document.querySelector(".stop-button");
 
 const adjustingSpeed = 6400;
 
 let enabled = false;
-let adjusting = false;
 
 const State = {
     IDLE: "IDLE",
@@ -27,15 +30,42 @@ const State = {
 }
 
 let state = State.IDLE
+let autoCaptureOn = false;
+
+const nightModeKey = "night_mode"
+let nightMode = localStorage.getItem(nightModeKey) === 'true';
+refreshNightMode()
+nightModeButton.onclick = function () {
+    nightMode = !nightMode;
+    refreshNightMode();
+    localStorage.setItem(nightModeKey, nightMode);
+};
+function refreshNightMode() {
+    if (nightMode) {
+        main.classList.add("theme-night");
+        main.classList.remove("theme-default");
+        nightModeButton.classList.add("selected");
+    } else {
+        main.classList.add("theme-default");
+        main.classList.remove("theme-night");
+        nightModeButton.classList.remove("selected")
+    }
+}
 
 socket.addEventListener("open", (event) => {
     const command = 3; // 0b0011
     send_command(command);
 
     trackingButton.onclick = function () {
-        let command = 2 + (enabled ? 0 : 1 << 4);
+        let command = 2 + (state === State.TRACKING ? 0 : 1 << 4);
         send_command(command);
     }
+
+    stopButton.onclick = function () {
+        let command = 1;
+        send_command(command);
+    }
+
     slider.onchange = function () {
         const speed = this.value;
         const direction = 1;
@@ -44,20 +74,14 @@ socket.addEventListener("open", (event) => {
     }
 
     upButton.onclick = function () {
-        let command;
         const upDirection = 1;
-        if (adjusting) command = 1;
-        else command = 1 + (upDirection << 4) + (adjustingSpeed << 5);
-        adjusting = !adjusting;
+        let command = 1 + (upDirection << 4) + (adjustingSpeed << 5);
         send_command(command);
     }
 
     downButton.onclick = function () {
-        let command;
         const downDirection = 0;
-        if (adjusting) command = 1;
-        else command = 1 + (downDirection << 4) + (adjustingSpeed << 5);
-        adjusting = !adjusting;
+        let command = 1 + (downDirection << 4) + (adjustingSpeed << 5);
         send_command(command);
     }
 
@@ -67,11 +91,20 @@ socket.addEventListener("open", (event) => {
     }
 
     autoCaptureButton.onclick = function () {
-        let command = 5; // 0b0101
-        command += shutterSpeed.value << 4
+        let command;
+        if (autoCaptureOn) {
+            command = 5; // 0b0101
+            command += shutterSpeed.value << 4
+        } else {
+            command = 7; // 0b0111
+        }
         send_command(command);
+        autoCaptureOn = !autoCaptureButton;
+        autoCaptureButton.querySelector(".text").innerHTML = autoCaptureOn ? 'Stop auto capture' : 'Start auto capture'
     }
 });
+
+updateState(State.IDLE)
 
 socket.addEventListener('message', async function (msg) {
     // const dataBytes = new Uint32Array(await msg.data.bytes());
@@ -124,26 +157,36 @@ function updateState(newState) {
     state = newState;
     switch (state) {
         case State.CALIBRATING:
-            calibrating.style.display = 'block';
+            calibrating.style.display = 'flex';
             trackingContainer.style.display = 'none';
             controlsContainer.style.display = 'none';
             break;
         case State.MOVING:
             calibrating.style.display = 'none';
+            stopButton.style.display = 'flex';
             trackingContainer.style.display = 'inline-flex';
             controlsContainer.style.display = 'flex';
+            moveButtons.forEach(it => it.style.display = 'none')
+            trackingButton.disabled = true
             break;
         case State.IDLE:
             calibrating.style.display = 'none';
             trackingContainer.style.display = 'inline-flex';
             controlsContainer.style.display = 'flex';
-            trackingButton.innerHTML = "Start tracking"
+            stopButton.style.display = 'none';
+            trackingButton.querySelector(".text").innerHTML = "Start tracking"
+            trackingButton.disabled = false
+            moveButtons.forEach(it => {
+                it.disabled = false;
+                it.style.display = 'flex'
+            })
             break;
         case State.TRACKING:
             calibrating.style.display = 'none';
             trackingContainer.style.display = 'inline-flex';
             controlsContainer.style.display = 'flex';
-            trackingButton.innerHTML = "Stop tracking"
+            trackingButton.querySelector(".text").innerHTML = "Stop tracking..."
+            moveButtons.forEach(it => it.disabled = true)
             break;
     }
 }

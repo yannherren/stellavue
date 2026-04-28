@@ -3,7 +3,7 @@
 mod rotation_state;
 
 use crate::stepper::rotation_state::RotationState;
-pub use crate::stepper::rotation_state::{STEPS_PER_ROTATION, MAX_ROTATIONS};
+pub use crate::stepper::rotation_state::{MAX_ROTATIONS, STEPS_PER_ROTATION};
 use crate::stepper::StepperDirection::UP;
 use crate::system::system_event::SystemEvent;
 use esp_idf_svc::eventloop::{
@@ -210,6 +210,11 @@ where
     S: OutputPin,
 {
     pub fn move_constant(&mut self, direction: StepperDirection, speed: u16) {
+        if speed == 0 {
+            self.stop_movement(true);
+            return;
+        }
+
         self.sys_loop
             .post::<SystemEvent>(
                 &SystemEvent::MovementStarted(if direction == UP { 1 } else { 0 }, speed),

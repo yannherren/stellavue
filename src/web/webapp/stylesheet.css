@@ -3,18 +3,37 @@
     height: 100%
 }
 
-html, body {
+.theme-default {
     --theme-dark: #202527;
     --theme-dark-accent: #131517;
     --theme-dark-transparent: rgba(26, 30, 32, 0.43);
     --theme-dark-highlight: #bdc3c7;
     --theme-dark-primary: #2980b9;
+    --theme-text-color: #bdc3c7;
+}
 
+.theme-night {
+    --theme-dark: #321313;
+    --theme-dark-accent: #2c0a0a;
+    --theme-dark-transparent: rgba(44, 10, 10, 0.56);
+    --theme-dark-highlight: #cf6060;
+    --theme-dark-primary: #6c1a14;
+    --theme-text-color: #ba827c;
+}
+
+html, body {
     margin: 0;
     padding: 0;
     width: 100vw;
+    height: 100svh;
+    max-height: 100vh;
     font-family: sans-serif;
     background-color: var(--theme-dark);
+}
+
+body {
+    display: flex;
+    flex-direction: column;
 }
 
 button {
@@ -23,13 +42,23 @@ button {
     border: none;
     background-color: var(--theme-dark-primary);
     border-radius: 6px;
-    color: white;
+    color: var(--theme-text-color);
     font-weight: bold;
+}
+
+.outlined {
+    background-color: transparent;
+    border: 1px solid var(--theme-dark-primary);
+}
+
+.small {
+    padding: 8px 12px;
+    font-weight: normal;
 }
 
 header {
     width: 100%;
-    padding: 24px 24px 24px 24px;
+    padding: 16px 24px 20px 16px;
     box-sizing: border-box;
     font-weight: bold;
     display: flex;
@@ -40,7 +69,9 @@ header {
 header h1 {
     font-size: 24px;
     margin: 0;
-    color: var(--theme-dark-highlight);
+    color: var(--theme-text-color);
+    display: flex;
+    align-items: center;
 }
 
 section {
@@ -55,6 +86,61 @@ section {
 
 .primary-icon {
     color: var(--theme-dark-primary);
+}
+
+.content {
+    height: 100%;
+    overflow: scroll;
+}
+
+.night-mode {
+    color: var(--theme-text-color);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-weight: normal;
+    padding: 8px 16px;
+    border-radius: 48px;
+}
+
+.night-mode.selected {
+    background-color: var(--theme-dark);
+}
+
+
+.night-mode svg {
+    height: 20px
+}
+
+.bottom-bar {
+    background-color: var(--theme-dark-accent);
+    display: flex;
+    justify-content: space-around;
+    padding: 16px 16px;
+    font-size: 12px;
+}
+
+.bottom-bar .selected {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.bottom-bar div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    opacity: 70%;
+    align-items: center;
+    width: 100%;
+}
+
+.bottom-bar div svg {
+    height: 24px;
+}
+
+.settings-screen {
+    display: none;
 }
 
 .tracking {
@@ -86,8 +172,8 @@ section {
     width: 172px;
     height: 172px;
     background: conic-gradient(
-            var(--theme-dark-primary) 180deg,
-            var(--theme-dark-accent) 180deg
+            var(--theme-dark-primary) 0,
+            var(--theme-dark-accent) 0
     );
     display: flex;
     justify-content: center;
@@ -111,6 +197,12 @@ section {
     gap: 24px;
 }
 
+.controls .buttons button.stop-button {
+    display: none;
+    border-radius: 50px;
+    width: 150px;
+}
+
 .controls button {
     border-radius: 50%;
     padding: 16px;
@@ -121,22 +213,57 @@ section {
     align-items: center;
     border: 1px solid var(--theme-dark-primary);
     background-color: var(--theme-dark-transparent);
-    color: white;
-    fill: white;
+    color: var(--theme-text-color);
+    fill: var(--theme-text-color);
 }
 
-.track-button {
-    text-transform: uppercase;
+.controls button:disabled {
+    opacity: 0.5;
+}
+
+.icon-button {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-.track-button svg {
+.icon-button:disabled {
+    opacity: 0.5;
+}
+
+.capture {
+    margin-top: 32px;
+    width: 100%;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+button svg {
     height: 24px;
     width: 24px;
 }
 
 .calibrating {
-    display: none;
+    min-height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.calibrating svg {
+    height: 48px;
+}
+
+.loader {
+    height: 48px;
+    animation: spinner 2.5s infinite linear;
+}
+
+@keyframes spinner {
+    from { transform: rotate(0) }
+    to { transform: rotate(360deg) }
 }
