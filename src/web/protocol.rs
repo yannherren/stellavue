@@ -10,6 +10,8 @@ pub enum ResponseType {
     TrackingStarted,
     CalibrationStarted,
     HeightChanged(u16),
+    ImageCaptured,
+    AutoCaptureChanged(bool),
     SystemStateInfo(SystemState),
 }
 
@@ -18,6 +20,9 @@ pub enum Command {
     MoveConstant(StepperDirection, u16),
     SetTracking(bool),
     RequestStatus,
+    TriggerTestCapture,
+    StartAutoCapture(u32),
+    StopAutoCapture,
     Unknown,
 }
 
@@ -44,7 +49,10 @@ pub fn map_command(
             let enable = if state == 1 { true } else { false };
             Command::SetTracking(enable)
         }
+        0b0100 => Command::TriggerTestCapture,
         0b0011 => Command::RequestStatus,
+        0b0101 => Command::StartAutoCapture(payload),
+        0b0111 => Command::StopAutoCapture,
         _ => Command::Unknown,
     }
 }
@@ -57,14 +65,12 @@ pub fn event_to_response(event: SystemEvent) -> Option<ResponseType> {
                 u32::from(rotations) * u32::from(STEPS_PER_ROTATION) + u32::from(offset);
             let max_steps: u32 = u32::from(MAX_ROTATIONS) * u32::from(STEPS_PER_ROTATION);
             let percentage = total_steps * 100 / max_steps;
-            info!("{:?}", percentage);
             Some(ResponseType::HeightChanged(percentage as u16))
         }
         SystemEvent::RotationComplete(rotations) => {
             let total_steps = u32::from(rotations) * u32::from(STEPS_PER_ROTATION);
             let max_steps: u32 = u32::from(MAX_ROTATIONS) * u32::from(STEPS_PER_ROTATION);
             let percentage = total_steps * 100 / max_steps;
-            info!("{:?}", percentage);
             Some(ResponseType::HeightChanged(percentage as u16))
         }
         SystemEvent::TrackingStart => Some(ResponseType::TrackingStarted),
@@ -73,6 +79,9 @@ pub fn event_to_response(event: SystemEvent) -> Option<ResponseType> {
         }
         SystemEvent::MovementStop => Some(ResponseType::AllMovementStopped),
         SystemEvent::SystemStateInfo(state) => Some(ResponseType::SystemStateInfo(state)),
+        SystemEvent::ImageCaptured => Some(ResponseType::ImageCaptured),
+        SystemEvent::AutoCaptureStarted => Some(ResponseType::AutoCaptureChanged(true)),
+        SystemEvent::AutoCaptureStopped => Some(ResponseType::AutoCaptureChanged(false))
     }
 }
 
@@ -96,6 +105,11 @@ pub fn parse_response(response_type: ResponseType) -> [u8; 4] {
                 SystemState::Idle => command = 0b000000 | command
             }
         },
+        ResponseType::ImageCaptured => command = 0b0101,
+        ResponseType::AutoCaptureChanged(enabled) => {
+            let on: u32 = if enabled { 1 } else { 0 };
+            command = (on << 4) + 0b0011
+        }
     }
 
     command.to_be_bytes()

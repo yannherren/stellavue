@@ -102,6 +102,15 @@ impl WebServer {
                 let state = (handler.get_state)();
                 sys_loop.post::<SystemEvent>(&SystemEvent::SystemStateInfo(state), delay::BLOCK).unwrap();
             }
+            Command::TriggerTestCapture => {
+                // TODO: single capture
+            }
+            Command::StartAutoCapture(interval) => {
+                // TODO: start auto capture
+            }
+            Command::StopAutoCapture => {
+                // TODO: stop auto capture
+            }
             Command::Unknown => {}
         }
     }

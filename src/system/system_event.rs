@@ -14,6 +14,9 @@ pub enum SystemEvent {
     TrackingStart,
     MovementStarted(u8, u16),
     MovementStop,
+    ImageCaptured,
+    AutoCaptureStarted,
+    AutoCaptureStopped,
     SystemStateInfo(SystemState)
 }
 

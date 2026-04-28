@@ -72,10 +72,10 @@ Example: 20" results in 20'000 ms
 
 `[28 bit: timer interval] 0101`
 
-### Start camera capture interval
+### Stop camera capture interval
 Stop interval image capturing
 
-`[28 bit: unused] 0101`
+`[28 bit: unused] 0111`
 
 
 ---
