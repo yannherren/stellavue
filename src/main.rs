@@ -18,6 +18,7 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
+use log::info;
 
 fn main() -> Result<(), EspError> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -38,6 +39,7 @@ fn main() -> Result<(), EspError> {
     let shutter = PinDriver::output(peripherals.pins.gpio5)?;
 
     let camera_driver = CameraDriver::new(shutter, sys_loop.clone());
+    CameraDriver::init(&camera_driver);
 
     let stepper = stepper::Stepper::new(dir, step, sys_loop.clone()); // TODO: add stop callback!
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));

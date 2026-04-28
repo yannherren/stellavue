@@ -10,6 +10,9 @@ const upButton = document.querySelector(".up-button");
 const downButton = document.querySelector(".down-button");
 const percentageValue = document.querySelector(".percentage-value");
 const percentageBar = document.querySelector(".percentage");
+const shutterSpeed = document.querySelector(".shutter-speed");
+const testCaptureButton = document.querySelector(".test-capture");
+const autoCaptureButton = document.querySelector(".auto-capture");
 
 const adjustingSpeed = 6400;
 
@@ -26,7 +29,7 @@ const State = {
 let state = State.IDLE
 
 socket.addEventListener("open", (event) => {
-    let command = 3;
+    const command = 3; // 0b0011
     send_command(command);
 
     trackingButton.onclick = function () {
@@ -55,6 +58,17 @@ socket.addEventListener("open", (event) => {
         if (adjusting) command = 1;
         else command = 1 + (downDirection << 4) + (adjustingSpeed << 5);
         adjusting = !adjusting;
+        send_command(command);
+    }
+
+    testCaptureButton.onclick = function () {
+        const command = 4; // 0b0100
+        send_command(command);
+    }
+
+    autoCaptureButton.onclick = function () {
+        let command = 5; // 0b0101
+        command += shutterSpeed.value << 4
         send_command(command);
     }
 });
