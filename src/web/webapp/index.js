@@ -12,15 +12,33 @@ const downButton = document.querySelector(".down-button");
 const percentageValue = document.querySelector(".percentage-value");
 const percentageBar = document.querySelector(".percentage");
 const shutterSpeed = document.querySelector(".shutter-speed");
+const processingTime = document.querySelector(".processing-time");
 const testCaptureButton = document.querySelector(".test-capture");
 const autoCaptureButton = document.querySelector(".auto-capture");
 const nightModeButton = document.querySelector(".night-mode");
 const moveButtons = document.querySelectorAll(".move-button");
 const stopButton = document.querySelector(".stop-button");
+const overviewScreen = document.querySelector(".overview-screen");
+const settingsScreen = document.querySelector(".settings-screen");
+const controlItem = document.querySelector(".control-item");
+const settingsItem = document.querySelector(".settings-item");
 
 const adjustingSpeed = 6400;
 
 let enabled = false;
+
+const originalLog = console.log.bind(console);
+
+console.log = function(...args) {
+    logMessage(args);
+    originalLog(...args);
+};
+
+
+const Screen = {
+    CONTROL: "CONTROL",
+    SETTINGS: "SETTINGS",
+}
 
 const State = {
     IDLE: "IDLE",
@@ -31,6 +49,15 @@ const State = {
 
 let state = State.IDLE
 let autoCaptureOn = false;
+setScreen(Screen.SETTINGS)
+
+settingsItem.onclick = function () {
+    setScreen(Screen.SETTINGS)
+}
+
+controlItem.onclick = function () {
+    setScreen(Screen.CONTROL)
+}
 
 const nightModeKey = "night_mode"
 let nightMode = localStorage.getItem(nightModeKey) === 'true';
@@ -94,7 +121,7 @@ socket.addEventListener("open", (event) => {
         let command;
         if (autoCaptureOn) {
             command = 5; // 0b0101
-            command += shutterSpeed.value << 4
+            command += (shutterSpeed.value + processingTime.value) << 4
         } else {
             command = 7; // 0b0111
         }
@@ -105,6 +132,7 @@ socket.addEventListener("open", (event) => {
 });
 
 updateState(State.IDLE)
+console.log("Hello", "test")
 
 socket.addEventListener('message', async function (msg) {
     // const dataBytes = new Uint32Array(await msg.data.bytes());
@@ -116,6 +144,8 @@ socket.addEventListener('message', async function (msg) {
     const data = new DataView(buffer).getInt32(0)
     const commandType = data & 0xF;
     const payload = data >> 4;
+
+    console.log("Received command: " + data)
 
     switch (commandType) {
         case 0:
@@ -142,15 +172,12 @@ socket.addEventListener('message', async function (msg) {
             break;
         case 0xF:
             console.log("Status response", payload)
-            updateState(State.CALIBRATING); //TODO: whatever
+            // updateState(State.CALIBRATING); //TODO: whatever
             break;
         default:
             console.log("Unknown command!")
     }
 
-    const el = document.createElement('div');
-    el.innerHTML = msg.data.toString();
-    logEl.appendChild(el);
 });
 
 function updateState(newState) {
@@ -191,6 +218,24 @@ function updateState(newState) {
     }
 }
 
+function setScreen(screen) {
+    switch (screen) {
+        case Screen.CONTROL:
+            overviewScreen.style.display = 'block';
+            settingsScreen.style.display = 'none';
+            controlItem.classList.add("selected")
+            settingsItem.classList.remove("selected")
+            break;
+        case Screen.SETTINGS:
+            overviewScreen.style.display = 'none';
+            settingsScreen.style.display = 'block';
+            settingsItem.classList.add("selected")
+            controlItem.classList.remove("selected")
+    }
+}
+
+
+
 function updatePercentage(percentage) {
     percentageValue.innerHTML = percentage.toString() + "%";
     percentageBar.style.background = `conic-gradient(
@@ -209,4 +254,13 @@ function send_command(command) {
     view.setInt32(0, command, false);
 
     socket.send(buffer);
+}
+
+function logMessage(messages) {
+    messages.forEach(it => {
+        const date = new Date().toISOString()
+        const el = document.createElement('div');
+        el.innerHTML = date + ": " + it;
+        logEl.appendChild(el);
+    })
 }

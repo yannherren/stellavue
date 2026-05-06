@@ -34,6 +34,7 @@ html, body {
 body {
     display: flex;
     flex-direction: column;
+    color: var(--theme-dark-highlight);
 }
 
 button {
@@ -256,6 +257,47 @@ button svg {
 
 .calibrating svg {
     height: 48px;
+}
+
+.settings-title {
+    margin-top: 0;
+    margin-bottom: 48px;
+}
+
+.settings-subtitle {
+    font-weight: normal;
+    text-transform: uppercase;
+    font-size: 16px;
+    margin: 24px 0;
+}
+
+.input {
+    font-size: 24px;
+    border: 1px solid var(--theme-dark-highlight);
+    border-radius: 4px;
+    background-color: transparent;
+    padding: 8px;
+    outline: none;
+    color: var(--theme-dark-highlight);
+}
+
+.shutter-setting {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.shutter-speed, .processing-time {
+    width: 50%;
+}
+
+.logs {
+    width: 100%;
+    background-color: var(--theme-dark-accent);
+    box-sizing: border-box;
+    padding: 16px;
+    border-radius: 4px;
+    font-family: "Courier New";
 }
 
 .loader {

@@ -34,8 +34,8 @@ fn main() -> Result<(), EspError> {
 
     let state = Arc::new(Mutex::new(SystemState::new()));
 
-    let step = PinDriver::output(peripherals.pins.gpio3)?;
-    let dir = PinDriver::output(peripherals.pins.gpio4)?;
+    let step = PinDriver::output(peripherals.pins.gpio8)?;
+    let dir = PinDriver::output(peripherals.pins.gpio7)?;
     let shutter = PinDriver::output(peripherals.pins.gpio5)?;
 
     let camera_driver = CameraDriver::new(shutter, sys_loop.clone());
