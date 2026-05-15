@@ -280,7 +280,7 @@ where
             let mut calibrating = self.calibrating.lock().unwrap();
             *calibrating = true;
         }
-        self.move_constant(StepperDirection::DOWN, STEPS_PER_ROTATION); // one rotation per second
+        self.move_constant(StepperDirection::DOWN, 3 * STEPS_PER_ROTATION); // one rotation per second
     }
 
     pub fn end_calibration(&mut self) {
@@ -295,9 +295,9 @@ where
         let mut direction_pin = self.dir_pin.lock().unwrap();
         *direction = new_direction;
         if *direction == StepperDirection::UP {
-            (*direction_pin).set_high().unwrap();
-        } else {
             (*direction_pin).set_low().unwrap();
+        } else {
+            (*direction_pin).set_high().unwrap();
         }
     }
 

@@ -49,7 +49,7 @@ const State = {
 
 let state = State.IDLE
 let autoCaptureOn = false;
-setScreen(Screen.SETTINGS)
+setScreen(Screen.CONTROL)
 
 settingsItem.onclick = function () {
     setScreen(Screen.SETTINGS)
@@ -172,7 +172,20 @@ socket.addEventListener('message', async function (msg) {
             break;
         case 0xF:
             console.log("Status response", payload)
-            // updateState(State.CALIBRATING); //TODO: whatever
+            switch (payload) {
+                case 0:
+                    updateState(State.IDLE);
+                    break;
+                case 1:
+                    updateState(State.CALIBRATING);
+                    break;
+                case 2:
+                    updateState(State.MOVING);
+                    break;
+                case 3:
+                    updateState(State.TRACKING);
+                    break;
+            }
             break;
         default:
             console.log("Unknown command!")

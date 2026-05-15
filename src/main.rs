@@ -7,7 +7,9 @@ mod wifi;
 use crate::camera::CameraDriver;
 use crate::system::system_state::SystemState;
 use crate::web::server::CallbackHandler;
+use embedded_hal::digital::InputPin;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::hal::delay::Ets;
 use esp_idf_svc::hal::gpio::{InterruptType, Pin, PinDriver, Pull};
 use esp_idf_svc::hal::i2c::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
@@ -18,7 +20,6 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
-use log::info;
 
 fn main() -> Result<(), EspError> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -41,22 +42,23 @@ fn main() -> Result<(), EspError> {
     let camera_driver = CameraDriver::new(shutter, sys_loop.clone());
     CameraDriver::init(&camera_driver);
 
-    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone()); // TODO: add stop callback!
-    let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
-    stepper.lock().unwrap().start_calibration();
-    {
-        let mut start_state = state.lock().unwrap();
-        *start_state = SystemState::Calibrating;
-    }
-
-    let mut limit_switch = PinDriver::input(peripherals.pins.gpio2)?;
+    let mut limit_switch = PinDriver::input(peripherals.pins.gpio6)?;
     limit_switch.set_pull(Pull::Up)?;
-    limit_switch.set_interrupt_type(InterruptType::PosEdge)?;
+    limit_switch.set_interrupt_type(InterruptType::NegEdge)?;
 
     unsafe {
         limit_switch.subscribe(move || {
             notifier.notify_and_yield(NonZeroU32::new(1).unwrap());
         })?;
+    }
+
+    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone()); // TODO: add stop callback!
+    let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
+
+    if limit_switch.is_high() {
+        stepper.lock().unwrap().start_calibration();
+        let mut start_state = state.lock().unwrap();
+        *start_state = SystemState::Calibrating;
     }
 
     let stepper_move = stepper.clone();
@@ -126,8 +128,11 @@ fn main() -> Result<(), EspError> {
     loop {
         limit_switch.enable_interrupt()?;
         notification.wait(esp_idf_svc::hal::delay::BLOCK);
-        let stepper_clone = stepper.clone();
-        stepper_clone.lock().unwrap().end_calibration();
-        state.lock().unwrap().transition(SystemState::Idle);
+        if limit_switch.is_low() {
+            let stepper_clone = stepper.clone();
+            stepper_clone.lock().unwrap().end_calibration();
+            state.lock().unwrap().transition(SystemState::Idle);
+            Ets::delay_ms(500); // debounce
+        }
     }
 }
