@@ -39,6 +39,7 @@ where
     direction: Arc<Mutex<StepperDirection>>,
     timer: Arc<Mutex<Option<EspTimer<'static>>>>,
     sys_loop: EspEventLoop<System>,
+    on_stop: Arc<dyn Fn() + Send + Sync>,
 }
 
 pub struct Off;
@@ -54,6 +55,7 @@ where
         dir: PinDriver<'static, D, Output>,
         step: PinDriver<'static, S, Output>,
         sys_loop: EspEventLoop<System>,
+        on_stop: Arc<dyn Fn() + Send + Sync>,
     ) -> Self {
         Stepper {
             state: Off,
@@ -65,6 +67,7 @@ where
             direction: Arc::new(Mutex::new(StepperDirection::UP)),
             timer: Arc::new(Mutex::new(None)),
             sys_loop,
+            on_stop
         }
     }
 
@@ -81,6 +84,7 @@ where
             let mut acc_clone = acc.clone();
             let mut timer_clone = self.timer.clone();
             let sys_loop_clone = self.sys_loop.clone();
+            let on_stop_clone = self.on_stop.clone();
 
             timer_service
                 .timer(move || {
@@ -93,6 +97,7 @@ where
                         &mut rotation_state_clone,
                         &mut acc_clone,
                         &sys_loop_clone,
+                        &on_stop_clone
                     )
                 })
                 .unwrap()
@@ -120,6 +125,7 @@ where
             rotation_state: self.rotation_state.clone(),
             timer: self.timer.clone(),
             sys_loop: self.sys_loop.clone(),
+            on_stop: self.on_stop.clone()
         }
     }
 
@@ -132,6 +138,7 @@ where
         rotation_state: &mut Arc<Mutex<RotationState>>,
         acc: &mut Arc<Mutex<f32>>,
         sys_loop: &EspEventLoop<System>,
+        on_stop: &Arc<dyn Fn() + Send + Sync>
     ) {
         let tracking = { *(tracking_active.lock().unwrap()) }; // important: read and release to prevent deadlock
         let mut step = step_pin.lock().unwrap();
@@ -159,6 +166,8 @@ where
             }
 
             let direction = direction.lock().unwrap();
+            let at_limit = (rotation_state.max_reached() && *direction == StepperDirection::UP)
+                || (rotation_state.min_reached() && *direction == StepperDirection::DOWN);
 
             let (modified_rotations, modified_offset) = if *direction == StepperDirection::UP {
                 rotation_state.increment_step()
@@ -166,8 +175,9 @@ where
                 rotation_state.decrement_step()
             };
 
-            if rotation_state.max_reached() || rotation_state.min_reached() {
+            if at_limit {
                 info!("max reached: {:?}", tracking);
+                on_stop();
                 let timer = timer.lock().unwrap();
                 let mut tracking_active = tracking_active.lock().unwrap();
                 if let Some(ref timer) = *timer {

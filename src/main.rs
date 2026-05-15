@@ -53,7 +53,15 @@ fn main() -> Result<(), EspError> {
         })?;
     }
 
-    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone()); // TODO: add stop callback!
+    let state_for_stop_callback = state.clone();
+
+    let stop_callback = Arc::new(move || {
+        let mut state = state_for_stop_callback.lock().unwrap();
+        state.transition(SystemState::Idle);
+        info!("Stop callback!");
+    });
+
+    let stepper = stepper::Stepper::new(dir, step, sys_loop.clone(), stop_callback);
     let mut stepper = Arc::new(Mutex::new(stepper.switch_on()));
 
     if limit_switch.is_high() {
