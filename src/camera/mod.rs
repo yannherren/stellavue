@@ -45,15 +45,17 @@ where
     }
 
     pub fn capture(&mut self) {
+        info!("Capture!");
         self.shutter_pin.set_high().unwrap();
         FreeRtos::delay_ms(1000);
         self.shutter_pin.set_low().unwrap();
     }
 
-    pub fn start_auto_capture(driver: &Arc<Mutex<Self>>, interval: u64) {
+    pub fn start_auto_capture(driver: &Arc<Mutex<Self>>, interval: u32) {
+        info!("start cap!");
+
         if let Ok(mut guard) = driver.lock() {
             if let Some(ref timer) = guard.timer {
-                info!("timer existent");
                 guard
                     .sys_loop
                     .post::<SystemEvent>(&SystemEvent::AutoCaptureStarted, delay::BLOCK)
@@ -61,14 +63,16 @@ where
                 if timer.is_scheduled().unwrap() {
                     return;
                 }
-                timer.every(Duration::from_millis(interval)).unwrap();
+                timer.every(Duration::from_millis(interval as u64)).unwrap();
             }
         }
     }
 
     pub fn stop_auto_capture(driver: &Arc<Mutex<Self>>) {
+        info!("stop cap!");
         if let Ok(mut guard) = driver.lock() {
             if let Some(ref timer) = guard.timer {
+                info!("cancel timer!");
                 guard
                     .sys_loop
                     .post::<SystemEvent>(&SystemEvent::AutoCaptureStopped, delay::BLOCK)

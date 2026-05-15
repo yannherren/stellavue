@@ -58,7 +58,6 @@ fn main() -> Result<(), EspError> {
     let stop_callback = Arc::new(move || {
         let mut state = state_for_stop_callback.lock().unwrap();
         state.transition(SystemState::Idle);
-        info!("Stop callback!");
     });
 
     let stepper = stepper::Stepper::new(dir, step, sys_loop.clone(), stop_callback);
@@ -102,7 +101,6 @@ fn main() -> Result<(), EspError> {
             }
         }),
         set_tracking: Box::new(move |enable| {
-            info!("request tracking, enable: {:?}", enable);
             let mut state = state_for_track.lock().unwrap();
             if enable && state.transition(SystemState::Tracking) {
                 stepper_track.lock().unwrap().set_tracking(true);
@@ -124,7 +122,7 @@ fn main() -> Result<(), EspError> {
             camera_for_test_capture.lock().unwrap().capture();
         }),
         start_auto_capture: Box::new(move |interval| {
-            CameraDriver::start_auto_capture(&camera_for_start, interval as u64);
+            CameraDriver::start_auto_capture(&camera_for_start, interval);
         }),
         stop_auto_capture: Box::new(move || {
             CameraDriver::stop_auto_capture(&camera_for_stop);

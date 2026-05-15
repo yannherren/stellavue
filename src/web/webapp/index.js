@@ -119,15 +119,16 @@ socket.addEventListener("open", (event) => {
     }
 
     autoCaptureButton.onclick = function () {
+        autoCaptureOn = !autoCaptureOn;
         let command;
         if (autoCaptureOn) {
             command = 5; // 0b0101
-            command += (shutterSpeed.value + processingTime.value) << 4
+            console.log(shutterSpeed.value * 1000)
+            command += (shutterSpeed.value * 1000 + processingTime.value * 1000) << 4
         } else {
             command = 7; // 0b0111
         }
         send_command(command);
-        autoCaptureOn = !autoCaptureButton;
         autoCaptureButton.querySelector(".text").innerHTML = autoCaptureOn ? 'Stop auto capture' : 'Start auto capture'
     }
 });

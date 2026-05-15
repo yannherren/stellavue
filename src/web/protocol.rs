@@ -108,7 +108,7 @@ pub fn parse_response(response_type: ResponseType) -> [u8; 4] {
         ResponseType::ImageCaptured => command = 0b0101,
         ResponseType::AutoCaptureChanged(enabled) => {
             let on: u32 = if enabled { 1 } else { 0 };
-            command = (on << 4) + 0b0011
+            command = (on << 4) + 0b0110
         }
     }
 
