@@ -1,3 +1,5 @@
+use log::info;
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum SystemState {
     Tracking,
@@ -13,6 +15,7 @@ impl SystemState {
 
     pub fn transition(&mut self, new_state: SystemState) -> bool {
         if self.transition_allowed(&new_state) {
+            info!("Transitioning to state: {:?}", new_state);
             *self = new_state;
             return true
         }

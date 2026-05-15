@@ -192,12 +192,12 @@ where
             if tracking {
                 // Only post steps when tracking since the tracking speed is slow
                 // Otherwise too many events are fired
-                sys_loop
-                    .post::<SystemEvent>(
-                        &SystemEvent::StepComplete(modified_rotations, modified_offset),
-                        delay::BLOCK,
-                    )
-                    .unwrap();
+                // sys_loop
+                //     .post::<SystemEvent>(
+                //         &SystemEvent::StepComplete(modified_rotations, modified_offset),
+                //         delay::BLOCK,
+                //     )
+                //     .unwrap();
                 rotation_state.update_speed_from_config();
             }
         }
@@ -249,11 +249,12 @@ where
             let mut tracking_active = self.tracking.lock().unwrap();
             *tracking_active = true;
         }
-        self.rotation_state
-            .lock()
-            .unwrap()
-            .update_speed_from_config();
-        info!("start timer!!!");
+        {
+            let mut state = self.rotation_state.lock().unwrap();
+            state.reset_tracking_speed();
+            state.update_speed_from_config();
+        }
+        info!("start tracking!!!");
         self.start_timer();
     }
 

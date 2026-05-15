@@ -84,6 +84,7 @@ socket.addEventListener("open", (event) => {
     send_command(command);
 
     trackingButton.onclick = function () {
+        console.log("Start Tracking! " + state === State.TRACKING)
         let command = 2 + (state === State.TRACKING ? 0 : 1 << 4);
         send_command(command);
     }
@@ -132,14 +133,8 @@ socket.addEventListener("open", (event) => {
 });
 
 updateState(State.IDLE)
-console.log("Hello", "test")
 
 socket.addEventListener('message', async function (msg) {
-    // const dataBytes = new Uint32Array(await msg.data.bytes());
-    // console.log(dataBytes)
-
-    // const data = dataBytes[3] << 24 + dataBytes[2] << 16 + dataBytes[1] << 8 + dataBytes[0]
-
     const buffer = await msg.data.arrayBuffer();
     const data = new DataView(buffer).getInt32(0)
     const commandType = data & 0xF;
@@ -255,10 +250,6 @@ function updatePercentage(percentage) {
             var(--theme-dark-primary) ${360 * (percentage / 100)}deg,
             var(--theme-dark-accent) ${360 * (percentage / 100)}deg
     )`
-    console.log(`conic-gradient(
-            var(--theme-dark-primary) ${360 * (percentage / 100)}deg,
-            var(--theme-dark-accent) ${360 * (percentage / 100)}deg
-    )`)
 }
 
 function send_command(command) {
@@ -273,7 +264,7 @@ function logMessage(messages) {
     messages.forEach(it => {
         const date = new Date().toISOString()
         const el = document.createElement('div');
-        el.innerHTML = date + ": " + it;
+        el.innerHTML = "<b>" + date  + ":</b> " + it;
         logEl.appendChild(el);
     })
 }

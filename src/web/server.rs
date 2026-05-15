@@ -98,7 +98,11 @@ impl WebServer {
         match command {
             Command::StartCalibration => (handler.start_calibration)(),
             Command::MoveConstant(direction, speed) => {
-                (handler.move_constant)(direction, speed)
+                if speed == 0 {
+                    (handler.stop)()
+                } else {
+                    (handler.move_constant)(direction, speed)
+                }
             }
             Command::SetTracking(enable) => (handler.set_tracking)(enable),
             Command::RequestStatus => {
