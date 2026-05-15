@@ -20,7 +20,9 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::EspError;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
+use esp_idf_svc::hal::delay;
 use log::info;
+use crate::system::system_event::SystemEvent;
 
 fn main() -> Result<(), EspError> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -140,6 +142,11 @@ fn main() -> Result<(), EspError> {
             let stepper_clone = stepper.clone();
             stepper_clone.lock().unwrap().end_calibration();
             state.lock().unwrap().transition(SystemState::Idle);
+            sys_loop
+                .post::<SystemEvent>(
+                    &SystemEvent::RotationComplete(0),
+                    delay::BLOCK,
+                )?;
             Ets::delay_ms(500); // debounce
         }
     }

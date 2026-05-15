@@ -37,7 +37,9 @@ pub fn map_command(
     let command_type = 0b1111 & command;
     let payload = command >> 4;
     match command_type {
-        0b0000 => Command::StartCalibration,
+        0b0000 => {
+            Command::StartCalibration
+        },
         0b0001 => {
             let direction = 0x1 & payload;
             let direction = if direction == 1 { UP } else { DOWN };

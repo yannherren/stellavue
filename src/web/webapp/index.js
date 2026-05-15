@@ -17,6 +17,7 @@ const testCaptureButton = document.querySelector(".test-capture");
 const autoCaptureButton = document.querySelector(".auto-capture");
 const nightModeButton = document.querySelector(".night-mode");
 const moveButtons = document.querySelectorAll(".move-button");
+const recalibrateButton = document.querySelector(".recalibrate-button");
 const stopButton = document.querySelector(".stop-button");
 const overviewScreen = document.querySelector(".overview-screen");
 const settingsScreen = document.querySelector(".settings-screen");
@@ -49,7 +50,7 @@ const State = {
 
 let state = State.IDLE
 let autoCaptureOn = false;
-setScreen(Screen.CONTROL)
+setScreen(Screen.SETTINGS)
 
 settingsItem.onclick = function () {
     setScreen(Screen.SETTINGS)
@@ -58,6 +59,21 @@ settingsItem.onclick = function () {
 controlItem.onclick = function () {
     setScreen(Screen.CONTROL)
 }
+
+const shutterKey = "shutter"
+const processingTimeKey = "processing_time"
+let savedShutter = localStorage.getItem(shutterKey) ?? '20';
+let savedProcessingTime = localStorage.getItem(processingTimeKey) ?? '0.5';
+shutterSpeed.value = savedShutter;
+processingTime.value = savedProcessingTime;
+
+shutterSpeed.addEventListener('input',function (e) {
+    localStorage.setItem(shutterKey, e.target.value);
+})
+
+processingTime.addEventListener('input',function (e) {
+    localStorage.setItem(processingTimeKey, e.target.value);
+})
 
 const nightModeKey = "night_mode"
 let nightMode = localStorage.getItem(nightModeKey) === 'true';
@@ -82,6 +98,10 @@ function refreshNightMode() {
 socket.addEventListener("open", (event) => {
     const command = 3; // 0b0011
     send_command(command);
+
+    recalibrateButton.onclick = function () {
+        send_command(0);
+    }
 
     trackingButton.onclick = function () {
         console.log("Start Tracking! " + state === State.TRACKING)
