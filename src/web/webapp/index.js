@@ -23,6 +23,7 @@ const overviewScreen = document.querySelector(".overview-screen");
 const settingsScreen = document.querySelector(".settings-screen");
 const controlItem = document.querySelector(".control-item");
 const settingsItem = document.querySelector(".settings-item");
+const messagesContainer = document.querySelector(".messages");
 
 const adjustingSpeed = 6400;
 
@@ -50,7 +51,7 @@ const State = {
 
 let state = State.IDLE
 let autoCaptureOn = false;
-setScreen(Screen.SETTINGS)
+setScreen(Screen.CONTROL)
 
 settingsItem.onclick = function () {
     setScreen(Screen.SETTINGS)
@@ -145,8 +146,10 @@ socket.addEventListener("open", (event) => {
             command = 5; // 0b0101
             console.log(shutterSpeed.value * 1000)
             command += (shutterSpeed.value * 1000 + processingTime.value * 1000) << 4
+            autoCaptureButton.querySelector("svg").classList.add("capture-on");
         } else {
             command = 7; // 0b0111
+            autoCaptureButton.querySelector("svg").classList.remove("capture-on");
         }
         send_command(command);
         autoCaptureButton.querySelector(".text").innerHTML = autoCaptureOn ? 'Stop auto capture' : 'Start auto capture'
@@ -185,6 +188,16 @@ socket.addEventListener('message', async function (msg) {
         case 0x4:
             console.log("Calibration started")
             updateState(State.CALIBRATING);
+            break;
+        case 0x5:
+            console.log("Image captured")
+            showNotification("📸", "Image finished")
+            break;
+        case 0x6:
+            console.log("Image capturing changed")
+            const text = payload === 1 ? 'Auto capture started' : 'Auto capture stopped'
+            const icon = payload === 1 ? '📷' : '⏹️'
+            showNotification(icon, text)
             break;
         case 0xF:
             console.log("Status response", payload)
@@ -288,4 +301,15 @@ function logMessage(messages) {
         el.innerHTML = "<b>" + date  + ":</b> " + it;
         logEl.appendChild(el);
     })
+}
+
+function showNotification(icon, text) {
+    const template = messagesContainer.querySelector(".message-template").cloneNode(true);
+    template.querySelector(".icon").innerHTML = icon;
+    template.querySelector(".message").innerHTML = text;
+    template.style.display = "flex";
+    messagesContainer.appendChild(template);
+    setTimeout(() => {
+        messagesContainer.removeChild(template);
+    }, 3000);
 }

@@ -113,6 +113,29 @@ section {
     height: 20px
 }
 
+.messages {
+    position: fixed;
+    top: 0;
+    right: 0;
+    margin-top: 96px;
+    margin-right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.messages .message-template {
+    background-color: var(--theme-dark-highlight);
+    color: var(--theme-dark);
+    padding: 16px;
+    gap: 8px;
+    align-items: center;
+    border-radius: 10px;
+    box-shadow: 5px 5px 34px 5px rgba(0,0,0,0.5);
+    display: none;
+    animation: 0.5s message-appear;
+}
+
 .bottom-bar {
     background-color: var(--theme-dark-accent);
     display: flex;
@@ -241,6 +264,14 @@ section {
     gap: 16px;
 }
 
+.capture-on {
+    animation: capture-on 3s infinite linear;
+}
+
+.auto-capture {
+    margin-bottom: 32px;
+}
+
 button svg {
     height: 24px;
     width: 24px;
@@ -308,4 +339,15 @@ button svg {
 @keyframes spinner {
     from { transform: rotate(0) }
     to { transform: rotate(360deg) }
+}
+
+@keyframes capture-on {
+    0% { transform: rotate(0) }
+    20% { transform: rotate(180deg) }
+    100% { transform: rotate(180deg) }
+}
+
+@keyframes message-appear {
+    from { transform: translateX(200px) }
+    to { transform: translateX(0) }
 }
