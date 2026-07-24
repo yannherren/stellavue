@@ -1,29 +1,18 @@
-<img src="docs/logo.png" width="200"  alt="logo"/>
+<img src="docs/logo.png" width="80"  alt="logo"/>
 
-# 🌟 Stellavue - Star Tracker Onboard Software (ESP32-C3, Rust)
+# Stellavue - Star Tracker Onboard Software (ESP32-C3, Rust)
 
 Onboard firmware for a DIY star tracker built on the ESP32-C3, written in Rust.
 
 Stellavue is an embedded firmware project designed to control a motorized star tracker for astrophotography. It runs on an ESP32-C3 Super Mini and provides precise stepper motor control as well as wireless interaction via Wi-Fi.
 
-## Purpose
+<img src="docs/result.jpg" width="600"  alt="logo"/>
+<br/>
+Image of the Pinwheel Galaxy (M101) taken using the star tracker running the stellavue firmware
 
-The goal of Stellavue is to provide a reliable, efficient, and extensible firmware for a DIY star tracker.  
-It focuses on:
-
-- Precise stepper motor control for sidereal tracking
-- Wireless control via Wi-Fi
-- A clean, maintainable embedded codebase written in Rust
-- Serving as a foundation for further features such as alignment routines or advanced control interfaces
-
-## Features
-
-- Stepper motor control using a TMC2208 driver
-- Wi-Fi connectivity for remote control
-- Built with Rust using the ESP-IDF ecosystem
-- Designed for ESP32-C3 hardware
-- Modular and extensible project structure
-
+## Documentation & Article
+The full documentation and article about the project can be found 
+[here](https://herren.io/projects/improved-star-tracker).
 
 ## Hardware Requirements
 
